@@ -1,5 +1,6 @@
 #include "sy_core.h"
 #include "utils.h"
+#include <OS/OSCache.h>
 #include <gf/gf_module.h>
 #include <vector.h>
 
@@ -15,38 +16,43 @@ namespace SyringeCore {
         }
 
         char id = *(int*)info->m_buffer;
-        for (int i = 0; i < Injections.size(); i++)
+
+        int numInjections = Injections.size();
+        for (int i = 0; i < numInjections; i++)
         {
             InjectionAbs* inject = Injections[i];
-            if (inject->moduleId == id)
+            if (inject->moduleId != id)
             {
-                // if full func replacement we don't need original
-                // instruction. Branch directly to replacemnt.
-                u32 targetAddr = inject->tgtAddr;
-                if (inject->originalInstr == -1)
-                {
-                    Hook* asHook = (Hook*)inject;
-
-                    // it's important we refresh this before
-                    // patching the target with the hook branch
-                    if (asHook->trampoline != NULL)
-                    {
-                        asHook->trampoline->originalInstr = *(u32*)targetAddr;
-                    }
-
-                    u32 branchAddr = (u32)&asHook->branch;
-                    *(u32*)targetAddr = utils::EncodeBranch(targetAddr, branchAddr);
-                }
-                else
-                {
-                    // refresh original instruction now that
-                    // module has been loaded into memory
-                    inject->originalInstr = *(u32*)targetAddr;
-
-                    u32 hookAddr = (u32)&inject->originalInstr;
-                    *(u32*)targetAddr = utils::EncodeBranch(targetAddr, hookAddr);
-                }
+                continue;
             }
+
+            // if full func replacement we don't need original
+            // instruction. Branch directly to replacemnt.
+            u32 targetAddr = inject->tgtAddr;
+            if (inject->originalInstr == -1)
+            {
+                Hook* asHook = (Hook*)inject;
+
+                // it's important we refresh this before
+                // patching the target with the hook branch
+                if (asHook->trampoline != NULL)
+                {
+                    asHook->trampoline->originalInstr = *(u32*)targetAddr;
+                }
+
+                u32 branchAddr = (u32)&asHook->branch;
+                *(u32*)targetAddr = utils::EncodeBranch(targetAddr, branchAddr);
+            }
+            else
+            {
+                // refresh original instruction now that
+                // module has been loaded into memory
+                inject->originalInstr = *(u32*)targetAddr;
+
+                u32 hookAddr = (u32)&inject->originalInstr;
+                *(u32*)targetAddr = utils::EncodeBranch(targetAddr, hookAddr);
+            }
+            ICInvalidateRange((void*)targetAddr, 0x04);
         }
     }
 
@@ -78,6 +84,12 @@ namespace SyringeCore {
         hook->instructions[9] = utils::EncodeBranch(returnBranch, (address + 4));
 
         Injections.push(hook);
+
+        ICInvalidateRange((void*)address, 0x04);
+    }
+    void sySimpleHook(const u32 address, const void* replacement, int moduleId)
+    {
+        syReplaceFunction(address, replacement, NULL, moduleId);
     }
     void syReplaceFunction(const u32 address, const void* replacement, void** original, int moduleId)
     {
@@ -107,6 +119,7 @@ namespace SyringeCore {
         *(u32*)address = utils::EncodeBranch(address, hookBranch);
 
         Injections.push(hook);
+        ICInvalidateRange((void*)address, 0x04);
     }
     void syReplaceFunction(const void* symbol, const void* replacement, void** original, int moduleId)
     {
