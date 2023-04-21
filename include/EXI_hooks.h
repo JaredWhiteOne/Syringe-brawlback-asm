@@ -8,13 +8,13 @@ void removeEXIDevice(EXIChannel channel);
 
 //These all return false if they fail, true if the succeed
 
-bool attachEXIDevice(EXIChannel channel, EXICallback callback=nullptr);
+bool attachEXIDevice(EXIChannel channel, EXICallback callback = 0);
 bool detachEXIDevice(EXIChannel channel);
-bool lockEXIDevice(EXIChannel channel, u32 device, EXICallback callback = nullptr);
+bool lockEXIDevice(EXIChannel channel, u32 device, EXICallback callback = 0);
 bool unlockEXIDevice(EXIChannel channel);
 bool selectEXIDevice(EXIChannel channel, u32 device, EXIFreq frequency);
 bool deselectEXIDevice(EXIChannel channel);
 
-bool transferDataEXI(EXIChannel channel, void* data, u32 size, EXIFreq transferType, EXICallback callback = nullptr);
+bool transferDataEXI(EXIChannel channel, void* data, u32 size, EXIFreq transferType, EXICallback callback = 0);
 
 bool syncEXITransfer(EXIChannel channel);

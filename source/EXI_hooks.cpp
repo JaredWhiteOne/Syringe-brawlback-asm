@@ -1,24 +1,26 @@
 #include "EXI_hooks.h"
 #include "mem.h"
-void writeEXI(void* data, u32 size, EXIChannel channel, EXIDevice device, EXIFrequency frequency) {
+#include "MEM/mem_expHeap.h"
+/*
+void writeEXI(void* data, u32 size, EXIChannel channel, u32 device, EXIFreq frequency) {
     //need to make new buffer to ensure data is aligned to cache block
-    void* alignedData = allocFromExpHeap(mainHeap, size, 32);
+    void* alignedData = MEMAllocFromExpHeapEx(mainHeap, size, 32);
     memmove(alignedData, data, size);
 
     flushDataCache(alignedData, size);
     setupEXIDevice(channel, device, frequency);
-    transferDataEXI(channel, alignedData, size, EXITransfer::write);
+    transferDataEXI(channel, alignedData, size, EXIType::EXI_WRITE);
     syncEXITransfer(channel);
     removeEXIDevice(channel);
 
     free(alignedData);
 }
 
-void readEXI(void* destination, u32 size, EXIChannel channel, EXIDevice device, EXIFrequency frequency) {
+void readEXI(void* destination, u32 size, EXIChannel channel, u32 device, EXIFreq frequency) {
     void* alignedDestination = allocFromExpHeap(mainHeap, size, 32);
 
     setupEXIDevice(channel, device, frequency);
-    transferDataEXI(channel, alignedDestination, size, EXITransfer::read);
+    transferDataEXI(channel, alignedDestination, size, EXIType::EXI_READ);
     syncEXITransfer(channel);
     removeEXIDevice(channel);
     flushDataCache(alignedDestination, size);
@@ -26,8 +28,8 @@ void readEXI(void* destination, u32 size, EXIChannel channel, EXIDevice device, 
     memcpy(destination, alignedDestination, size);
     free(alignedDestination);
 }
-
-void setupEXIDevice(EXIChannel channel, EXIDevice device, EXIFrequency frequency) {
+*/
+void setupEXIDevice(EXIChannel channel, u32 device, EXIFreq frequency) {
     attachEXIDevice(channel);
     lockEXIDevice(channel, device);
     selectEXIDevice(channel, device, frequency);
@@ -40,33 +42,33 @@ void removeEXIDevice(EXIChannel channel) {
 }
 
 bool attachEXIDevice(EXIChannel channel, EXICallback callback) {
-    return _EXIAttach(channel, callback);
+    return EXIAttach(channel, callback);
 }
 
 bool detachEXIDevice(EXIChannel channel) {
-    return _EXIDetach(channel);
+    return EXIDetach(channel);
 }
 
-bool lockEXIDevice(EXIChannel channel, EXIDevice device, EXICallback callback) {
-    return _EXILock(channel, device, callback);
+bool lockEXIDevice(EXIChannel channel, u32 device, EXICallback callback) {
+    return EXILock(channel, device, callback);
 }
 
 bool unlockEXIDevice(EXIChannel channel) {
-    return _EXIUnlock(channel);
+    return EXIUnlock(channel);
 }
 
-bool selectEXIDevice(EXIChannel channel, EXIDevice device, EXIFrequency frequency) {
-    return _EXISelect(channel, device, frequency);
+bool selectEXIDevice(EXIChannel channel, u32 device, EXIFreq frequency) {
+    return EXISelect(channel, device, frequency);
 }
 
 bool deselectEXIDevice(EXIChannel channel) {
-    return _EXIDeselect(channel);
+    return EXIDeselect(channel);
 }
 
-bool transferDataEXI(EXIChannel channel, void* data, u32 size, EXITransfer transferType, EXICallback callback) {
-    return _EXI_DMA(channel, data, size, transferType, callback);
+bool transferDataEXI(EXIChannel channel, void* data, u32 size, EXIType transferType, EXICallback callback) {
+    return EXIDma(channel, data, size, transferType, callback);
 }
 
 bool syncEXITransfer(EXIChannel channel) {
-    return _EXISync(channel);
+    return EXISync(channel);
 }

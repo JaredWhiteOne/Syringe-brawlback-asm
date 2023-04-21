@@ -86,7 +86,6 @@ export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 			-I$(CURDIR)/lib/BrawlHeaders/std/Include \
 			-I$(CURDIR)/lib/BrawlHeaders/utils/include \
 			-I$(CURDIR)/lib/brawlback-common \
-			-I$(CURDIR)/lib/open_rvl/include/revolution \
 
 #---------------------------------------------------------------------------------
 # build a list of library paths
