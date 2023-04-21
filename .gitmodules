@@ -2,3 +2,9 @@
 	path = lib/BrawlHeaders
 	url = https://github.com/JaredWhiteOne/BrawlHeaders.git
 	branch = main
+[submodule "lib/brawlback-common"]
+	path = lib/brawlback-common
+	url = https://github.com/Brawlback-Team/brawlback-common
+[submodule "lib/open_rvl"]
+	path = lib/open_rvl
+	url = https://github.com/kiwi515/open_rvl.git

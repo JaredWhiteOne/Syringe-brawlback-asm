@@ -8,7 +8,6 @@
 
 #include "sel_char_load_thread.h"
 #include "sy_core.h"
-
 using namespace nw4r::g3d;
 
 namespace CSSHooks {

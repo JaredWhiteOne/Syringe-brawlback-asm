@@ -3,7 +3,6 @@
 #include <OS/OSCache.h>
 #include <gf/gf_module.h>
 #include <vector.h>
-
 namespace SyringeCore {
     Vector<InjectionAbs*> Injections;
 
