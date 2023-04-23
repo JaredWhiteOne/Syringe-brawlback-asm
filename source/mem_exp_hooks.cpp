@@ -2,6 +2,7 @@
 #include <mem/mem_expHeap.h>
 
 namespace MemExpHooks {
+    MEMHeapHandle mainHeap;
     void initializeMemory(void* heapAddress, u32 heapSize) {
         mainHeap = MEMCreateExpHeapEx(heapAddress, heapSize, 0);
     }

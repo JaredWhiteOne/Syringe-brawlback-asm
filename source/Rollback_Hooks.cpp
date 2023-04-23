@@ -224,7 +224,8 @@ namespace Util {
 
     }
 
-    void SaveState(u32 currentFrame) {        
+    void SaveState(u32 currentFrame) {
+        OSReport("SENDING CAPTURE SAVESTATE!\n");
         EXIPacket::CreateAndSend(CMD_CAPTURE_SAVESTATE, &currentFrame, sizeof(currentFrame));
     }
 }
@@ -247,7 +248,7 @@ namespace Match {
         }
         report.frame_duration = getCurrentFrame();
     }
-    void SendGameReport(const GameReport& report)
+    void SendGameReport(GameReport& report)
     {
         OSReport("Sending end match report to emu. Num players = %u\n", (u32)Netplay::getGameSettings().numPlayers);
         EXIPacket::CreateAndSend(CMD_MATCH_END, &report, sizeof(report));
@@ -359,9 +360,10 @@ namespace Match {
         SavestateMemRegionInfo memRegion;
         memRegion.address = addr_start; // might be bad cast... 64 bit ptr to 32 bit int
         memRegion.size = mem_size;
-        memmove(memRegion.nameBuffer, heap_name, strlen(heap_name));
+        memCpy(memRegion.nameBuffer, heap_name, strlen(heap_name));
         memRegion.nameBuffer[strlen(heap_name)] = '\0';
         memRegion.nameSize = strlen(heap_name);
+        OSReport("SENDING DUMPALL!\n");
         EXIPacket::CreateAndSend(CMD_SEND_DUMPALL, &memRegion, sizeof(SavestateMemRegionInfo));
     }
     void ProcessGameAllocation(u8* allocated_addr, u32 size, char* heap_name)
@@ -371,9 +373,10 @@ namespace Match {
             SavestateMemRegionInfo memRegion;
             memRegion.address = reinterpret_cast<u32>(allocated_addr); // might be bad cast... 64 bit ptr to 32 bit int
             memRegion.size = size;
-            memmove(memRegion.nameBuffer, heap_name, strlen(heap_name));
+            memCpy(memRegion.nameBuffer, heap_name, strlen(heap_name));
             memRegion.nameBuffer[strlen(heap_name)] = '\0';
             memRegion.nameSize = strlen(heap_name);
+            OSReport("SENDING ALLOCS!\n");
             EXIPacket::CreateAndSend(CMD_SEND_ALLOCS, &memRegion, sizeof(memRegion));
         }
     }
@@ -382,10 +385,11 @@ namespace Match {
         if (shouldTrackAllocs && strstr(relevantHeaps, heap_name) != NULL && !isRollback) {
             //OSReport("FREE: addr = 0x%08x\n", address);
             SavestateMemRegionInfo memRegion;
-            memmove(memRegion.nameBuffer, heap_name, strlen(heap_name));
+            memCpy(memRegion.nameBuffer, heap_name, strlen(heap_name));
             memRegion.nameBuffer[strlen(heap_name)] = '\0';
             memRegion.nameSize = strlen(heap_name);
             memRegion.address = reinterpret_cast<u32>(address);
+            OSReport("SENDING DEALLOCS!\n");
             EXIPacket::CreateAndSend(CMD_SEND_DEALLOCS, &memRegion, sizeof(memRegion));
         }
     }
@@ -412,7 +416,7 @@ namespace Match {
     {
         char* heap_name = *internal_heap_data;
         size_t heapNameSize = strlen(heap_name);
-        memmove(allocHeapName, heap_name, heapNameSize);
+        memCpy(allocHeapName, heap_name, heapNameSize);
         allocHeapName[heapNameSize] = '\0';
         allocSizeTracker = size;
     }
@@ -480,6 +484,7 @@ namespace FrameAdvance {
     // requests FrameData for specified frame from emulator and assigns it to inputs
     void GetInputsForFrame(u32 frame, FrameData* inputs) 
     {
+        OSReport("SENDING FRAMEDATA!\n");
         EXIPacket::CreateAndSend(CMD_FRAMEDATA, &frame, sizeof(frame));
         EXIHooks::readEXI(inputs, sizeof(FrameData), EXI_CHAN_1, 0, EXI_FREQ_32HZ);
         Util::FixFrameDataEndianness(inputs);
@@ -616,6 +621,7 @@ namespace FrameLogic {
             playerFrame.playerIdx = localPlayerIdx;
             Util::PopulatePlayerFrameData(playerFrame, Netplay::getGameSettings().localPlayerPort, localPlayerIdx);
             // sending inputs + current game frame
+            OSReport("SENDING ONLINE INPUTS!\n");
             EXIPacket::CreateAndSend(CMD_ONLINE_INPUTS, &playerFrame, sizeof(PlayerFrameData));
         }
         else {
@@ -629,6 +635,7 @@ namespace FrameLogic {
     void SendFrameCounterPointerLoc()
     {
         u32 frameCounterLocation = reinterpret_cast<u32>(&frameCounter);
+        OSReport("SENDING FRAME COUNTER LOCATION!\n");
         EXIPacket::CreateAndSend(CMD_SEND_FRAMECOUNTERLOC, &frameCounterLocation, sizeof(u32));
     }
     const char* nonResimTasks = "ecMgr EffectManager";
@@ -663,6 +670,7 @@ namespace FrameLogic {
     {
         utils::SaveRegs();
         if (Netplay::IsInMatch()) {
+            OSReport("SENDING CMD_TIMER_START!\n");
             EXIPacket::CreateAndSend(CMD_TIMER_START);
         }
         utils::RestoreRegs();
@@ -715,6 +723,7 @@ namespace FrameLogic {
     {
         utils::SaveRegs();
         if (Netplay::IsInMatch()) {
+            OSReport("SENDING CMD_TIMER_END!\n");
             EXIPacket::CreateAndSend(CMD_TIMER_END);
         }
         utils::RestoreRegs();
@@ -798,7 +807,7 @@ namespace GMMelee {
         if (isMatchChoicesPopulated) {
             OSReport("postSetupMelee stage: 0x%x p1: 0x%x p2: 0x%x\n", stageChoice, charChoices[0], charChoices[1]);
 
-            memmove(g_gmGlobalModeMelee, defaultGmGlobalModeMelee, 0x320);
+            memCpy(g_gmGlobalModeMelee, (u8*)defaultGmGlobalModeMelee, 0x320);
             u8* melee = (u8*)g_gmGlobalModeMelee;
 
             melee[P1_CHAR_ID_IDX] = charChoices[0];
@@ -912,13 +921,13 @@ namespace Netplay {
 }
 
 namespace MemoryHooks {
-    /*
     void fakeGFPoolAlloc1()
     {
         utils::SaveRegs();
-        register u8 r3Value;
+        u8 r3Value;
         asm (
-            "mr r3Value, r3\n\t"
+            "mr %0, r3\n\t" 
+            : "=r" (r3Value)
         );
         if(r3Value != 0xFF)
         {
@@ -941,9 +950,10 @@ namespace MemoryHooks {
     void fakeGFPoolAlloc2()
     {
         utils::SaveRegs();
-        register u8 r3Value;
+        u8 r3Value;
         asm (
-            "mr r3Value, r3\n\t"
+            "mr %0, r3\n\t"
+            : "=r"(r3Value)
         );
         if(r3Value != 0xFF)
         {
@@ -953,21 +963,23 @@ namespace MemoryHooks {
             );
         }
         else {
-            register size_t r4Value;
+            size_t r4Value;
             utils::RestoreRegs();
             asm (
-                "mr r4Value, r4\n\t"
+                "mr %0, r4\n\t"
                 "mr r4, r5\n\t"
+                : "=r" (r4Value)
             );
             MemExpHooks::mallocExp(r4Value);
         }
     }
     void fakeGFPoolFree()
     {
-        register u32 r3PointerVal;
+        u32 r3PointerVal;
         utils::SaveRegs();
         asm (
-            "mr r3PointerVal, r3\n\t"
+            "mr %0, r3\n\t"
+            : "=r" (r3PointerVal)
         );
         if(r3PointerVal <= reinterpret_cast<u32>(MemExpHooks::mainHeap))
         {
@@ -981,53 +993,53 @@ namespace MemoryHooks {
             );
         }
     }
-    */
 }
 
 namespace RollbackHooks {
     void InstallHooks() 
     {
+        MemExpHooks::initializeMemory((void*) 0x93604000, 0x4000);
         // Match Namespace
-        SyringeCore::sySimpleHook(0x806d4c10, reinterpret_cast<void*>(Match::StopGameScMeleeHook));
-        SyringeCore::sySimpleHook(0x806d176c, reinterpret_cast<void*>(Match::StartSceneMelee));
-        SyringeCore::sySimpleHook(0x806d4844, reinterpret_cast<void*>(Match::ExitSceneMelee));
-        SyringeCore::sySimpleHook(0x80024aac, reinterpret_cast<void*>(Match::dumpAll_gfMemoryPool_hook));
-        SyringeCore::sySimpleHook(0x8002625c, reinterpret_cast<void*>(Match::dump_gfMemoryPool_hook));
-        SyringeCore::sySimpleHook(0x80025c6c, reinterpret_cast<void*>(Match::alloc_gfMemoryPool_hook));
-        SyringeCore::sySimpleHook(0x80025ec4, reinterpret_cast<void*>(Match::allocGfMemoryPoolEndHook));
-        SyringeCore::sySimpleHook(0x80025f40, reinterpret_cast<void*>(Match::free_gfMemoryPool_hook));
-        SyringeCore::sySimpleHook(0x80024a78, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::sySimpleHook(0x80024a84, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::sySimpleHook(0x80024a90, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::sySimpleHook(0x80024adc, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::sySimpleHook(0x80024aec, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::sySimpleHook(0x80024ae0, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::sySimpleHook(0x80026288, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::sySimpleHook(0x8002619c, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::sySimpleHook(0x800261b4, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::sySimpleHook(0x800262e0, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::sySimpleHook(0x800260fc, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::sySimpleHook(0x80026114, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::sySimpleHook(0x800260f0, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::sySimpleHook(0x80026278, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::sySimpleHook(0x800262ac, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::sySimpleHook(0x800260e0, reinterpret_cast<void*>(utils::nop));
+        SyringeCore::syHookFunction(0x806d4c10, reinterpret_cast<void*>(Match::StopGameScMeleeHook));
+        SyringeCore::syHookFunction(0x806d176c, reinterpret_cast<void*>(Match::StartSceneMelee));
+        SyringeCore::syHookFunction(0x806d4844, reinterpret_cast<void*>(Match::ExitSceneMelee));
+        SyringeCore::syHookFunction(0x80024aac, reinterpret_cast<void*>(Match::dumpAll_gfMemoryPool_hook));
+        SyringeCore::syHookFunction(0x8002625c, reinterpret_cast<void*>(Match::dump_gfMemoryPool_hook));
+        SyringeCore::syHookFunction(0x80025c6c, reinterpret_cast<void*>(Match::alloc_gfMemoryPool_hook));
+        SyringeCore::syHookFunction(0x80025ec4, reinterpret_cast<void*>(Match::allocGfMemoryPoolEndHook));
+        SyringeCore::syHookFunction(0x80025f40, reinterpret_cast<void*>(Match::free_gfMemoryPool_hook));
+        SyringeCore::syHookFunction(0x80024a78, reinterpret_cast<void*>(utils::nop));
+        SyringeCore::syHookFunction(0x80024a84, reinterpret_cast<void*>(utils::nop));
+        SyringeCore::syHookFunction(0x80024a90, reinterpret_cast<void*>(utils::nop));
+        SyringeCore::syHookFunction(0x80024adc, reinterpret_cast<void*>(utils::nop));
+        SyringeCore::syHookFunction(0x80024aec, reinterpret_cast<void*>(utils::nop));
+        SyringeCore::syHookFunction(0x80024ae0, reinterpret_cast<void*>(utils::nop));
+        SyringeCore::syHookFunction(0x80026288, reinterpret_cast<void*>(utils::nop));
+        SyringeCore::syHookFunction(0x8002619c, reinterpret_cast<void*>(utils::nop));
+        SyringeCore::syHookFunction(0x800261b4, reinterpret_cast<void*>(utils::nop));
+        SyringeCore::syHookFunction(0x800262e0, reinterpret_cast<void*>(utils::nop));
+        SyringeCore::syHookFunction(0x800260fc, reinterpret_cast<void*>(utils::nop));
+        SyringeCore::syHookFunction(0x80026114, reinterpret_cast<void*>(utils::nop));
+        SyringeCore::syHookFunction(0x800260f0, reinterpret_cast<void*>(utils::nop));
+        SyringeCore::syHookFunction(0x80026278, reinterpret_cast<void*>(utils::nop));
+        SyringeCore::syHookFunction(0x800262ac, reinterpret_cast<void*>(utils::nop));
+        SyringeCore::syHookFunction(0x800260e0, reinterpret_cast<void*>(utils::nop));
 
         // FrameAdvance Namespace
-        SyringeCore::sySimpleHook(0x8004aa2c, reinterpret_cast<void*>(FrameAdvance::updateIpSwitchPreProcess));
-        SyringeCore::sySimpleHook(0x80029468, reinterpret_cast<void*>(FrameAdvance::updateLowHook));
-        SyringeCore::sySimpleHook(0x800173a4, reinterpret_cast<void*>(FrameAdvance::handleFrameAdvanceHook));
+        SyringeCore::syHookFunction(0x8004aa2c, reinterpret_cast<void*>(FrameAdvance::updateIpSwitchPreProcess));
+        SyringeCore::syHookFunction(0x80029468, reinterpret_cast<void*>(FrameAdvance::updateLowHook));
+        SyringeCore::syHookFunction(0x800173a4, reinterpret_cast<void*>(FrameAdvance::handleFrameAdvanceHook));
 
         // FrameLogic Namespace
-        SyringeCore::sySimpleHook(0x8002dc74, reinterpret_cast<void*>(FrameLogic::gfTaskProcessHook));
-        SyringeCore::sySimpleHook(0x800174fc, reinterpret_cast<void*>(FrameLogic::endMainLoop));
-        SyringeCore::sySimpleHook(0x801473a0, reinterpret_cast<void*>(FrameLogic::endFrame));
-        SyringeCore::sySimpleHook(0x800171b4, reinterpret_cast<void*>(FrameLogic::beginningOfMainGameLoop));
-        SyringeCore::sySimpleHook(0x80017760, reinterpret_cast<void*>(FrameLogic::updateFrameCounter));
-        SyringeCore::sySimpleHook(0x8004e884, reinterpret_cast<void*>(FrameLogic::initFrameCounter));
-        SyringeCore::sySimpleHook(0x80147394, reinterpret_cast<void*>(FrameLogic::beginFrame));
+        SyringeCore::syHookFunction(0x8002dc74, reinterpret_cast<void*>(FrameLogic::gfTaskProcessHook));
+        SyringeCore::syHookFunction(0x800174fc, reinterpret_cast<void*>(FrameLogic::endMainLoop));
+        SyringeCore::syHookFunction(0x801473a0, reinterpret_cast<void*>(FrameLogic::endFrame));
+        SyringeCore::syHookFunction(0x800171b4, reinterpret_cast<void*>(FrameLogic::beginningOfMainGameLoop));
+        SyringeCore::syHookFunction(0x80017760, reinterpret_cast<void*>(FrameLogic::updateFrameCounter));
+        SyringeCore::syHookFunction(0x8004e884, reinterpret_cast<void*>(FrameLogic::initFrameCounter));
+        SyringeCore::syHookFunction(0x80147394, reinterpret_cast<void*>(FrameLogic::beginFrame));
 
         // GMMelee Namespace
-        SyringeCore::sySimpleHook(0x806dd03c, reinterpret_cast<void*>(GMMelee::postSetupMelee));
+        SyringeCore::syHookFunction(0x806dd03c, reinterpret_cast<void*>(GMMelee::postSetupMelee));
     }
 }

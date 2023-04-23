@@ -1,27 +1,32 @@
 #include "EXI_hooks.h"
+#include <string.h>
+#include <OS/OSError.h>
 namespace EXIHooks {
     void writeEXI(void* data, u32 size, EXIChannel channel, u32 device, EXIFreq frequency) {
         //need to make new buffer to ensure data is aligned to cache block
         void* alignedData = MEMAllocFromExpHeapEx(MemExpHooks::mainHeap, size, 32);
-        memmove(alignedData, data, size);
-
+        memCpy(alignedData, data, size);
         DCFlushRange(alignedData, size);
         setupEXIDevice(channel, device, frequency);
-        EXIDma(channel, alignedData, size, 1, 0);
+        EXIDma(channel, alignedData, size, 1, NULL);
         syncEXITransfer(channel);
         removeEXIDevice(channel);
+
+        MemExpHooks::freeExp(alignedData);
     }
 
     void readEXI(void* destination, u32 size, EXIChannel channel, u32 device, EXIFreq frequency) {
         void* alignedDestination = MEMAllocFromExpHeapEx(MemExpHooks::mainHeap, size, 32);
 
         setupEXIDevice(channel, device, frequency);
-        EXIDma(channel, alignedDestination, size, 0, 0);
+        EXIDma(channel, alignedDestination, size, 0, NULL);
         syncEXITransfer(channel);
         removeEXIDevice(channel);
         DCFlushRange(alignedDestination, size);
 
-        memmove(destination, alignedDestination, size);
+        memCpy(destination, alignedDestination, size);
+
+        MemExpHooks::freeExp(alignedDestination);
     }
     void setupEXIDevice(EXIChannel channel, u32 device, EXIFreq frequency) {
         attachEXIDevice(channel);

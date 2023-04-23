@@ -2,7 +2,7 @@
 #include <MEM/mem_heapCommon.h>
 
 namespace MemExpHooks {
-    static MEMHeapHandle mainHeap;
+    extern MEMHeapHandle mainHeap;
     void initializeMemory(void* heapAddress, u32 heapSize);
     void* mallocExp(size_t size);
     void freeExp(void* ptr);

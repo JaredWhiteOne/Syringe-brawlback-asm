@@ -93,7 +93,7 @@ namespace Util {
 }
 namespace Match {
     void PopulateGameReport(GameReport& report);
-    void SendGameReport(const GameReport& report);
+    void SendGameReport(GameReport& report);
     void StopGameScMeleeHook();
     void StartSceneMelee();
     void ExitSceneMelee();

@@ -14,7 +14,7 @@ EXIPacket::EXIPacket() {
     }
 
     // copy EXICmd byte into packet
-    memmove(new_packet, &EXICmd, sizeof(EXICmd));
+    memCpy(new_packet, &EXICmd, sizeof(EXICmd));
 
     // set our size/src ptr so the Send() function knows how much/what to send
     this->size = new_size;
@@ -31,7 +31,7 @@ EXIPacket::EXIPacket(u8 EXICmd) {
     }
 
     // copy EXICmd byte into packet
-    memmove(new_packet, &EXICmd, sizeof(EXICmd));
+    memCpy(new_packet, &EXICmd, sizeof(EXICmd));
 
     // set our size/src ptr so the Send() function knows how much/what to send
     this->size = new_size;
@@ -52,11 +52,11 @@ EXIPacket::EXIPacket(u8 EXICmd, void* source, u32 size) {
     }
 
     // copy EXICmd byte into packet
-    memmove(new_packet, &EXICmd, sizeof(EXICmd));
+    memCpy(new_packet, &EXICmd, sizeof(EXICmd));
 
     if (source) {
         // copy actual packet into our buffer
-        memmove(new_packet + sizeof(EXICmd), source, size);
+        memCpy(new_packet + sizeof(EXICmd), source, size);
     }
 
     // set our size/src ptr so the Send() function knows how much/what to send
@@ -86,19 +86,17 @@ bool EXIPacket::Send() {
     return success;
 }
 
-void EXIPacket::CreateAndSend(u8 EXICmd, const void* source, u32 size) {
+void EXIPacket::CreateAndSend(u8 EXICmd, void* source, u32 size) {
 
     // enough for the EXICmd byte + size of the packet
     u32 new_size = sizeof(EXICmd) + size;
-
     u8* new_packet = new u8[new_size];
 
     // copy EXICmd byte into packet
-    memmove(new_packet, &EXICmd, sizeof(EXICmd));
-
+    memCpy(new_packet, &EXICmd, sizeof(EXICmd));
     if (source) {
         // copy actual packet into our buffer
-        memmove(new_packet + sizeof(EXICmd), source, size);
+        memCpy((new_packet + sizeof(EXICmd)), source, (size_t)size);
     }
 
     EXIHooks::writeEXI(new_packet, new_size, EXI_CHAN_1, 0, EXI_FREQ_32HZ);
