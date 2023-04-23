@@ -130,6 +130,7 @@ $(OFILES_SOURCES) : $(HFILES)
 %.rel: %.elf
 	@echo output ... $(notdir $@)
 	$(SILENTCMD)$(ELF2REL) $< -s $(MAPFILE) -s --rel-id $(RELID)
+	-mv $(OUTPUT).rel $(TOPDIR)/SDCard/Project+/pf/module
 	
 %.elf:
 	@echo linking ... $(notdir $@)

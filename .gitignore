@@ -1,7 +1,9 @@
 *.rel
 *.map
 *.elf
+*.raw
 
+SDCard/
 build/
 .idea/
 .vscode/
