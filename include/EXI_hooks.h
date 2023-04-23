@@ -1,7 +1,7 @@
 #pragma once
 #include "EXI/EXIBios.h"
 #include "EXI/EXICommon.h"
-#include "mem.h"
+#include "memoryFuncs.h"
 #include "MEM/mem_expHeap.h"
 #include "OS/OSCache.h"
 #include "mem_exp_hooks.h"
