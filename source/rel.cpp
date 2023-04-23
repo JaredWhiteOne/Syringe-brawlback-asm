@@ -5,6 +5,7 @@
 #include <gf/gf_file_io.h>
 #include <gf/gf_task.h>
 #include <memory.h>
+#include "Rollback_Hooks.h"
 
 namespace Syringe {
 
@@ -27,7 +28,8 @@ namespace Syringe {
             (*ctor)();
         }
         SyringeCore::syInit();
-        CSSHooks::InstallHooks();
+        MemExpHooks::initializeMemory((void*) 0x93604000, 0x4000);
+        RollbackHooks::InstallHooks();
     }
 
     void _epilog()

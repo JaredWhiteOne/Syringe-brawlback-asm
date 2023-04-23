@@ -1,10 +1,8 @@
 #include "EXI_hooks.h"
-
-MEMHeapHandle mainHeap;
 namespace EXIHooks {
     void writeEXI(void* data, u32 size, EXIChannel channel, u32 device, EXIFreq frequency) {
         //need to make new buffer to ensure data is aligned to cache block
-        void* alignedData = MEMAllocFromExpHeapEx(mainHeap, size, 32);
+        void* alignedData = MEMAllocFromExpHeapEx(MemExpHooks::mainHeap, size, 32);
         memmove(alignedData, data, size);
 
         DCFlushRange(alignedData, size);
@@ -15,7 +13,7 @@ namespace EXIHooks {
     }
 
     void readEXI(void* destination, u32 size, EXIChannel channel, u32 device, EXIFreq frequency) {
-        void* alignedDestination = MEMAllocFromExpHeapEx(mainHeap, size, 32);
+        void* alignedDestination = MEMAllocFromExpHeapEx(MemExpHooks::mainHeap, size, 32);
 
         setupEXIDevice(channel, device, frequency);
         EXIDma(channel, alignedDestination, size, 0, 0);

@@ -9,8 +9,11 @@
 27,6,2E68: g_ftManager
 27,6,2E70: g_ftAudienceManager
 27,6,5518: g_aiMgr
-27,6,E8: g_Gravity
+27,6,E8: g_soWorld
 8059FF80:g_gfSceneRoot
+805a00b8:g_mtRandDefault
+805a0420:g_mtRandOther
+901812a0:g_GameFrame
 
 // System
 803f1254:__save_fpr
@@ -63,13 +66,35 @@
 803f1374:_restgpr_29
 8000c8ac:__nw__FUl
 8000c8b8:__nw__FUlQ25Heaps8HeapType
+8000c8ac:__nwa__FUl
 8000c8cc:__nwa__FUlQ25Heaps8HeapType
 8000c8c8:__dl__FPv
 8000c8dc:__dla__FPv
 803f11f8:__cvt_fp2unsigned
 803f0a1c:__construct_new_array
-801d8600:OSReport
 80403664:TRK_flush_cache__FPvUl
+801e892c:VIWaitForRetrace__Fv
+801d76e8:DCFlushRange__FPvi
+801d77cc:ICInvalidateRange__FPvi
+
+// OS
+801d8600:OSReport
+801e0cfc:OSCreateThread
+801e1364:OSResumeThread
+801e1224:OSJoinThread
+801dcf10:OSDisableInterrupts
+801dcf24:OSEnableInterrupts
+801dcf38:OSRestoreInterrupts
+
+// EXI
+801e4b7c:EXIAttach
+801e4c94:EXIDetach
+801e54e0:EXILock
+801e4c94:EXIUnlock
+801e4d4c:EXISelect
+801e4e7c:EXIDeselect
+801e4604:EXIDma
+801e46fc:EXISync
 
 // string
 803fa3fc:strcmp__FPCcPCc
@@ -86,6 +111,9 @@
 803fa674:strtok__FPcPc
 803fa798:strstr__FPcPc
 
+// module
+80043b18:moUnResolvedMessage__FPCc
+
 // strtoul
 803fc704:atoi__FPCc
 
@@ -95,6 +123,11 @@
 // __mem
 803f0640:strlen__FPc
 8000443c:__memfill__FPvUcUl
+
+// mem
+803f602c:memmove
+80204e5c:MEMAllocFromAllocator
+80204e6c:MEMFreeToAllocator
 
 // NW4R
 8018d2a4:GetResMdlNumEntries__Q34nw4r3g3d7ResFileFv
@@ -171,7 +204,7 @@
 
 // gfArchive
 8001370c:__ct__9gfArchiveFv
-80015ddc:getData__9gfArchiveF11ARCNodeTypeiUi
+80015ddc:getData__9gfArchiveF11ARCNodeTypeiUs
 80015e14:getData__9gfArchiveF11ARCNodeTypeiPiUi
 80013b1c:__dt__9gfArchiveFv
 
@@ -207,7 +240,7 @@
 8002d180:registSequence__14gfSceneManagerFv
 8002d1a0:process__14gfSceneManagerFv
 8002d32c:postProcess__14gfSceneManagerFv
-8002d3f4:searchScene__14gfSceneManagerFv
+8002d3f4:searchScene__14gfSceneManagerFPc
 8002d474:searchSequence__14gfSceneManagerFv
 8002d4f4:startSequence__14gfSceneManagerFv
 8002d5ac:setNextScene__14gfSceneManagerFv
@@ -278,10 +311,11 @@
 27,1,0022579C:getPokeTrainerDrawLayer__5StageFv
 27,1,00225794:isAdventureStage__5StageFv
 27,1,002225ac:initPosPokeTrainer__5StageFii
-27,1,00224AF4:getItemPac__5StageFPP9gfArchivePP9gfArchiveii
+27,1,00224AF4:getItemPac__5StageFPP9gfArchivePP9gfArchive6itKindi
+27,1,00224AF4:getItemPac__5StageFPP9gfArchivePP9gfArchive6itKindiPP9gfArchivePP21itCustomizerInterface
 27,1,00224AF8:getItemGenPac__5StageFPP9gfArchive
-27,1,00224AFC:getItemPacEnemyFigure__5StageFv
-27,1,00224B00:getEnemyPac__5StageFPP9gfArchivePP9gfArchivePP9gfArchivePP9gfArchive7EnemyID
+27,1,00224AFC:getItemPacEnemyFigure__5StageFPP9gfArchive
+27,1,00224B00:getEnemyPac__5StageFPP9gfArchivePP9gfArchivePP9gfArchivePP9gfArchive9EnemyKind
 27,1,00224B04:getAdvRadarData__5StageFPP9gfArchivePP9gfArchive
 27,1,00221B68:initializeStage__5StageFv
 27,1,00221F80:closeStage__5StageFv
@@ -388,6 +422,7 @@
 27,1,00223398:testStageDataInit__5StageFP9gfArchiveii
 27,1,0022269c:createObjPokeTrainer__5StageFP9gfArchiveiPCcii
 27,1,00223A08:setStageAttackData__5StageFP20grGimmickDamageFloorUi
+27,1,00222794:setStageData__6GroundFPv
 
 // stCommonGimmick
 27,1,002380b0:releaseArchive__15stCommonGimmickFv
@@ -400,14 +435,14 @@
 
 // stClassInfo
 27,1,002257bc:__ct__11stClassInfoFv
-27,1,002258fc:setClassInfo__11stClassInfoFiP11stClassInfo
+27,1,002258fc:setClassInfo__11stClassInfoFQ26Stages11srStageKindP11stClassInfo
 27,1,002258a8:__dt__11stClassInfoFv
 
 // stMelee
-27,1,00238bdc:__ct__7stMeleeFPci
+27,1,00238bdc:__ct__7stMeleeFPCcQ26Stages11srStageKind
 27,1,002395bc:processBegin__7stMeleeFv
 27,1,002395c0:processUpdate__7stMeleeFv
-27,1,00239660:update__7stMeleeFv
+27,1,00239660:update__7stMeleeFf
 27,1,002394cc:setCameraLimitRange__7stMeleeFffff
 27,1,00239534:resetCameraLimitRange__7stMeleeFv
 27,1,00239ae4:checkChangeScene__7stMeleeFv
@@ -421,6 +456,7 @@
 27,1,002394A4:updateWind2ndOnly__7stMeleeFv
 27,1,0023959C:zoomInCamera__7stMeleeFv
 27,1,00239574:zoomOutCamera__7stMeleeFff
+27,1,00238DB4:setPlayerPositionIndexSerial__7stMeleeFv
 
 // Ground
 27,1,00261b50:setDontMoveGround__6GroundFv
@@ -623,7 +659,7 @@
 27,1,00279D50:onDamage__8grMadeinFiP8soDamageP20soDamageAttackerInfo
 27,1,00279E04:onInflictEach__8grMadeinFP14soCollisionLogf
 27,1,00278c54:update__8grMadeinFf
-27,1,00275778:create__8grMadeinFiPcPc8HeapType
+27,1,00275778:create__8grMadeinFiPcPcQ25Heaps8HeapType
 27,1,00279f14:receiveCollMsg_Landing__8grMadeinFP12grCollStatusP16grCollisionJointb
 27,1,00278DC4:setTgtNode__8grMadeinFPc
 27,1,00278DC8:getTgtNode__8grMadeinFv
@@ -648,6 +684,9 @@
 27,1,0026EFD8:isStartFrame__19grGimmickMotionPathFv
 27,1,0026EFA0:applyEndFrame__19grGimmickMotionPathFv
 
+// StageObject
+27,1,00003C64:activate__11StageObjectFffP5Vec3fb
+
 // soCollisionHitGroup
 27,1,000426AC:setInvincibleGlobal__19soCollisionHitGroupFv
 
@@ -670,8 +709,10 @@
 27,1,0010B1D0:getEntryCount__9ftManagerFv
 27,1,0010B22C:getEntryId__9ftManagerFi
 27,1,0010B29C:getEntryIdFromTaskId__9ftManagerFiPi
+27,1,0010A620:isFighterActivate__9ftManagerFii
 27,1,0010B0BC:getPlayerNo__9ftManagerFi
 27,1,0010A02C:getTeam__9ftManagerFibb
+27,1,0010AFD0:getOwner__9ftManagerFi
 27,1,0010CF6C:setCurry__9ftManagerFi
 27,1,0010D234:setSlow__9ftManagerFibii
 27,1,0010D0D8:setHeal__9ftManagerFif
@@ -688,6 +729,9 @@
 27,1,00138900:setCurry__7FighterFbi
 27,1,0013C860:warp__7FighterFP5Vec3ffb
 
+// ftOwner
+27,1,00111B2C:getStockCount__7ftOwnerFv
+
 // ftOutsideEventPresenter
 27,1,0015B0C8:notifyOutsideEventKnockout__23ftOutsideEventPresenterFv
 
@@ -697,14 +741,20 @@
 // itManager
 27,1,002A1718:getInstance__9itManagerFv
 27,1,002A55CC:isCompItemKindArchive__9itManagerF6itKindUib
+27,1,002A3F4C:preloadItemKindArchive__9itManagerF6itKindUiQ29itArchive4Typeb
 27,1,002A7070:createItem__9itManagerF6itKindUiiiUciii
+27,1,002A8124:createItemInstance__9itManagerFP8itCreate
+27,1,002A8640:getItemNum__9itManagerF6itKind
+27,1,002A7BA0:removeItem__9itManagerFP8BaseItem
 
 // BaseItem
+27,1,0027F564:__ct__8BaseItemFP8itCreate
 27,1,0028C834:getParam__8BaseItemFUi
 27,1,0028C85C:getParam__8BaseItemFi
 27,1,0028C884:getParamFloat__8BaseItemFUi
 27,1,0028DE00:warp__8BaseItemFP5Vec3f
 27,1,0028C7E8:setVanishMode__8BaseItemFb
+27,1,0028FF6C:setSafePos__8BaseItemFP5Vec2f
 
 // Yakumono
 27,1,0026383C:setReactionFrame__8YakumonoFi
@@ -742,9 +792,9 @@
 // emManager
 41,1,0000C6B0:create__9emManagerFUiUiUc
 41,1,0000C804:getInstance__9emManagerFv
-41,1,0000D20C:preloadArchive__9emManagerFP9gfArchiveP9gfArchiveP9gfArchiveP9gfArchive7EnemyIDb
+41,1,0000D20C:preloadArchive__9emManagerFP9gfArchiveP9gfArchiveP9gfArchiveP9gfArchive9EnemyKindb
 41,1,0000C9D4:createEnemy__9emManagerFP8emCreate
-41,1,0000D6B8:getPreloadArchiveCountFromKind__9emManagerF7EnemyID
+41,1,0000D6B8:getPreloadArchiveCountFromKind__9emManagerF9EnemyKind
 41,1,0000CCE4:removeEnemyAll__9emManagerFv
 41,1,0000D528:removeArchiveAll__9emManagerFv
 41,1,0000C7B4:remove__9emManagerFv
@@ -760,6 +810,8 @@
 
 
 //gfFileIO
+8001bf0c:readFile__8gfFileIOFP15gfFileIORequest
+8001cbf4:readSDFile__8gfFileIOFP15gfFileIORequest
 80020b38:__dt__14gfFileIOHandleFv
 80020b98:setNotify__14gfFileIOHandleFv
 80020bec:createDirRequest__14gfFileIOHandleFv
@@ -776,9 +828,9 @@
 800212b0:checkFreeSize__14gfFileIOHandleFv
 8002134c:del__14gfFileIOHandleFv
 800213e8:writeNAND__14gfFileIOHandleFv
-80021498:readRequest__14gfFileIOHandleF14gfFileIOHandlePc8HeapTypeii
+800215e0:readRequest__14gfFileIOHandleFPcPvii
+80021498:readRequest__14gfFileIOHandleFPcQ25Heaps8HeapTypeii
 80021540:readRequest1__14gfFileIOHandleFv
-800215e0:readRequest2__14gfFileIOHandleFv
 80021680:readRequestCached__14gfFileIOHandleFv
 80021738:readRequestCached1__14gfFileIOHandleFv
 800217e8:readRequestCached2__14gfFileIOHandleFv
@@ -797,7 +849,7 @@
 80021f94:getBuffer__14gfFileIOHandleFv
 80021fa0:getPool__14gfFileIOHandleFv
 80021fac:release__14gfFileIOHandleFv
-80021498:readRequest__14gfFileIOHandleFPcQ25Heaps8HeapTypeii
+8002239c:setReadParam__15gfFileIORequestFP15gfFileIORequestPcPvii
 
 // gameGlobal
 8004D9DC:getLanguage__10GameGlobalFv
@@ -830,6 +882,7 @@
 800b51f4:changeClrAnimNIf__8MuObjectFPc
 800b784c:setFrameVisible__8MuObjectFf
 800b7a18:setFrameMatCol__8MuObjectFf
+800b7900:setFrameTex__8MuObjectFf
 800b2394:create__8MuObjectFPPQ34nw4r3g3d7ResFilePcciQ25Heaps8HeapType
 800b2404:create__8MuObjectFPPQ34nw4r3g3d7ResFileiciQ25Heaps8HeapType
 
@@ -866,6 +919,7 @@
 800af5a4:getInfoMsgID__6muMenuFiii
 800af5b4:exchangeGmCharacterKind2MuStockchkind__6muMenuFi
 800acdec:getStockFrameID__6muMenuFiii
+800af600:getStockFrameID__6muMenuFi
 800af614:exchangeMuStageKindToSrStageKind__6muMenuFiii
 800af628:exchangeSrStageKindToMuStageKind__6muMenuFiii
 800af6a0:getStageFrameNo__6muMenuFiii
@@ -874,6 +928,7 @@
 800af708:exchangeGmCharacterKind2MuSelchkind__6muMenuFiii
 800af80c:exchangeMuSelchkind2GmCharacterKind__6muMenuFiii
 800af844:exchangeMuSelchkind2MuStockchkind__6muMenuFiii
+800af82c:exchangeMuSelchkind2MuStockchkind__6muMenuFi
 800af85c:exchangeSelchkind2SelCharVoice__6muMenuFi
 800ae4a0:exchangeStockchkind2SelCharNarrationSndID__6muMenuFiii
 800af874:exchangeSelchkind2SelCharNarrationSndID__6muMenuFiii
@@ -899,10 +954,9 @@
 800af8a0:exchangeSelCharVoice2SelCharVoiceLengthE__6muMenuFi
 800AF8B8:exchangeSelCharVoice2SelCharVoiceLengthJ__6muMenuFi
 800af600:exchangeGmCharacterKind2Something__6muMenuFi
+8069742c:setCharPic__19muSelCharPlayerAreaFiiibii
 // aboves exact meaning unsure, file ID in classic mode intro
 
 
 //sndSystem
 800742b0:playSE__9sndSystemFiiiii
-
-

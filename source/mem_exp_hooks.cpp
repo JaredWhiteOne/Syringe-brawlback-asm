@@ -11,4 +11,7 @@ namespace MemExpHooks {
     void freeExp(void* ptr) {
         MEMFreeToExpHeap(mainHeap, ptr);
     }
+    u32 getFreeSize(MEMHeapHandle heap, int alignment) {
+        return MEMGetAllocatableSizeForExpHeapEx(heap, alignment);
+    }
 }
