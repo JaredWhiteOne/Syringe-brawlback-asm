@@ -2,15 +2,45 @@
 #include <OS/OSInterrupt.h>
 EXICommand EXIPacket::getCmd() { return this->cmd; }
 
-EXIPacket::EXIPacket() { 
-    EXIPacket(CMD_UNKNOWN, 0, 0);
+EXIPacket::EXIPacket() {
+    u8 EXICmd = CMD_UNKNOWN;
+    // enough for the EXICmd byte + size of the packet
+    u32 new_size = sizeof(EXICmd);
+
+    u8* new_packet = (u8*)MEMAllocFromExpHeapEx(MemExpHooks::mainHeap, new_size, 32);
+    if (!new_packet) {
+        OSReport("Failed to alloc %u bytes! Heap space available: %u\n", size, MemExpHooks::getFreeSize(MemExpHooks::mainHeap, 4));
+        return;
+    }
+
+    // copy EXICmd byte into packet
+    memmove(new_packet, &EXICmd, sizeof(EXICmd));
+
+    // set our size/src ptr so the Send() function knows how much/what to send
+    this->size = new_size;
+    this->source = new_packet;
+    this->cmd = (EXICommand)EXICmd; 
 }
 EXIPacket::EXIPacket(u8 EXICmd) { 
-    EXIPacket(EXICmd, 0, 0);
+    u32 new_size = sizeof(EXICmd);
+
+    u8* new_packet = (u8*)MEMAllocFromExpHeapEx(MemExpHooks::mainHeap, new_size, 32);
+    if (!new_packet) {
+        OSReport("Failed to alloc %u bytes! Heap space available: %u\n", size, MemExpHooks::getFreeSize(MemExpHooks::mainHeap, 4));
+        return;
+    }
+
+    // copy EXICmd byte into packet
+    memmove(new_packet, &EXICmd, sizeof(EXICmd));
+
+    // set our size/src ptr so the Send() function knows how much/what to send
+    this->size = new_size;
+    this->source = new_packet;
+    this->cmd = (EXICommand)EXICmd;
 }
 
 EXIPacket::EXIPacket(u8 EXICmd, void* source, u32 size) {
-    if (!source) size = 0; if (size <= 0) source = 0; //sanity checks
+    if (!source) size = 0; if (size <= 0) source = NULL; //sanity checks
 
     // enough for the EXICmd byte + size of the packet
     u32 new_size = sizeof(EXICmd) + size;
