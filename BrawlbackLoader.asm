@@ -82,7 +82,7 @@ _main:
     bctrl # getHeap
     cmpwi r3, 0
     lswi r3, r31, 16 # loads our data into r3-r6
-    #beq _noBex
+    beq _noBex
     lis r0, 1       # \
     sub r3, r3, r0  # | If brawlex is present, our heap start will
     sub r4, r4, r0  # | need to be 0x10000 earlier and menu instance
@@ -96,7 +96,7 @@ _noBex:
     stw r6, 0x2394(r7) # /
 
 _createHeap:
-    lis r4, 1
+    lis r4, 2
     addi r5, r31, 0x10
     lis r6, 0x8049
     ori r6, r6, 0x4D18
@@ -123,3 +123,24 @@ _loadModule:
     addi r1, r1, 0x20
     lwz r0, 0x14(r1) # original instruction
 }
+
+#########################################################
+Don't print out OSReport calls on DumpAll [WhiteTPoison]
+#########################################################
+op nop @ $80024a78
+op nop @ $80024a84
+op nop @ $80024a90
+op nop @ $80024aec
+op nop @ $80024adc
+op nop @ $80024ae0
+op nop @ $800260fc
+op nop @ $80026114
+op nop @ $800260f0
+op nop @ $800262ac
+op nop @ $80026278
+op nop @ $800260e0
+op nop @ $80026288
+op nop @ $8002619c
+op nop @ $800261b4
+op nop @ $800262e0
+op nop @ $8002625c

@@ -17,7 +17,7 @@ u32 getCurrentFrame() {
 }
 
 bool gameHasStarted() {
-    return reinterpret_cast<scMelee*>(gfSceneManager::getInstance()->searchScene("scMelee"))->m_operatorRuleGameMode->isEnd() != 0;
+    return reinterpret_cast<scMelee*>(gfSceneManager::getInstance()->searchScene("scMelee"))->m_operatorReadyGo->isEnd() != 0;
 }
 
 void fillOutGameSettings(GameSettings& settings) {
@@ -40,7 +40,7 @@ void fillOutGameSettings(GameSettings& settings) {
     // sequence. Gotta find another way to get it, or some better spot to grab the number of players
     settings.numPlayers = 2;
     OSReport("Num Players: %u\n", (unsigned int)settings.numPlayers);
-    PlayerSettings* playerSettings = new PlayerSettings[settings.numPlayers];
+    PlayerSettings* playerSettings = (PlayerSettings*)MemExpHooks::mallocExp(sizeof(PlayerSettings) * settings.numPlayers);
     playerSettings[0].charID = p1_id;
     playerSettings[1].charID = p2_id;
     
@@ -226,7 +226,7 @@ namespace Util {
 
     void SaveState(u32 currentFrame) {
         OSReport("SENDING CAPTURE SAVESTATE!\n");
-        EXIPacket::CreateAndSend(CMD_CAPTURE_SAVESTATE, &currentFrame, sizeof(currentFrame));
+        EXIPacket::CreateAndSend(EXICommand::CMD_CAPTURE_SAVESTATE, &currentFrame, sizeof(currentFrame));
     }
 }
 
@@ -251,11 +251,11 @@ namespace Match {
     void SendGameReport(GameReport& report)
     {
         OSReport("Sending end match report to emu. Num players = %u\n", (u32)Netplay::getGameSettings().numPlayers);
-        EXIPacket::CreateAndSend(CMD_MATCH_END, &report, sizeof(report));
+        EXIPacket::CreateAndSend(EXICommand::CMD_MATCH_END, &report, sizeof(report));
     }
     void StopGameScMeleeHook()
     {
-        utils::SaveRegs();
+        
         OSReport("Game report in stopGameScMeleeBeginningHook hook\n");
         if (Netplay::getGameSettings().numPlayers > 1) {
             #if 0  // toggle for sending end match game stats
@@ -264,10 +264,6 @@ namespace Match {
             SendGameReport(report);
             #endif
         }
-        utils::RestoreRegs();
-        asm(
-            "mr r17, r15\n\r"
-        );
     }
     void StartSceneMelee()
     {
@@ -285,9 +281,6 @@ namespace Match {
         #endif
         OSEnableInterrupts();
         utils::RestoreRegs();
-        asm(
-            "addi sp, sp, 112\n\r"
-        );
     }
     void ExitSceneMelee()
     {
@@ -301,40 +294,6 @@ namespace Match {
         #endif
         OSEnableInterrupts();
         utils::RestoreRegs();
-        asm(
-            "li r4, 0x0\n\r"
-        );
-    }
-    void dumpAll_gfMemoryPool_hook()
-    {
-        register void* heap;
-        asm (
-            "mr heap, r29\n\t"
-        );
-        utils::SaveRegs();
-        if(!DumpAllGfMemoryPoolHook(heap))
-        {
-            utils::RestoreRegs();
-            asm(
-                "lis r12, 0x8002\n\t"
-                "ori r12, r12, 0x4ab0\n\t"
-                "mtctr r12\n\t"
-                "bctr\n\t"
-            );
-        }
-        else {
-            utils::RestoreRegs(); 
-            asm(
-                "lis r12, 0x8002\n\t"
-                "ori r12, r12, 0x4ab4\n\t"
-                "mtctr r12\n\t"
-                "bctr\n\t"
-            );
-        }
-    }
-    bool DumpAllGfMemoryPoolHook(void* heap)
-    {
-        return strstr(relevantHeaps, *(char**)(heap)) != NULL;
     }
     void dump_gfMemoryPool_hook()
     {
@@ -357,14 +316,16 @@ namespace Match {
     void DumpGfMemoryPoolHook(char** r30_reg_val, u32 addr_start, u32 addr_end, u32 mem_size, u8 id)
     {
         char* heap_name = *r30_reg_val;
-        SavestateMemRegionInfo memRegion;
-        memRegion.address = addr_start; // might be bad cast... 64 bit ptr to 32 bit int
-        memRegion.size = mem_size;
-        memCpy(memRegion.nameBuffer, heap_name, strlen(heap_name));
-        memRegion.nameBuffer[strlen(heap_name)] = '\0';
-        memRegion.nameSize = strlen(heap_name);
-        OSReport("SENDING DUMPALL!\n");
-        EXIPacket::CreateAndSend(CMD_SEND_DUMPALL, &memRegion, sizeof(SavestateMemRegionInfo));
+        if(strstr(relevantHeaps, heap_name) != NULL) {
+            SavestateMemRegionInfo memRegion;
+            memRegion.address = addr_start; // might be bad cast... 64 bit ptr to 32 bit int
+            memRegion.size = mem_size;
+            memmove(memRegion.nameBuffer, heap_name, strlen(heap_name));
+            memRegion.nameBuffer[strlen(heap_name)] = '\0';
+            memRegion.nameSize = strlen(heap_name);
+            OSReport("SENDING DUMPALL!\n");
+            EXIPacket::CreateAndSend(EXICommand::CMD_SEND_DUMPALL, &memRegion, sizeof(SavestateMemRegionInfo));
+        }
     }
     void ProcessGameAllocation(u8* allocated_addr, u32 size, char* heap_name)
     {
@@ -373,11 +334,11 @@ namespace Match {
             SavestateMemRegionInfo memRegion;
             memRegion.address = reinterpret_cast<u32>(allocated_addr); // might be bad cast... 64 bit ptr to 32 bit int
             memRegion.size = size;
-            memCpy(memRegion.nameBuffer, heap_name, strlen(heap_name));
+            memmove(memRegion.nameBuffer, heap_name, strlen(heap_name));
             memRegion.nameBuffer[strlen(heap_name)] = '\0';
             memRegion.nameSize = strlen(heap_name);
             OSReport("SENDING ALLOCS!\n");
-            EXIPacket::CreateAndSend(CMD_SEND_ALLOCS, &memRegion, sizeof(memRegion));
+            EXIPacket::CreateAndSend(EXICommand::CMD_SEND_ALLOCS, &memRegion, sizeof(memRegion));
         }
     }
     void ProcessGameFree(u8* address, char* heap_name)
@@ -385,12 +346,12 @@ namespace Match {
         if (shouldTrackAllocs && strstr(relevantHeaps, heap_name) != NULL && !isRollback) {
             //OSReport("FREE: addr = 0x%08x\n", address);
             SavestateMemRegionInfo memRegion;
-            memCpy(memRegion.nameBuffer, heap_name, strlen(heap_name));
+            memmove(memRegion.nameBuffer, heap_name, strlen(heap_name));
             memRegion.nameBuffer[strlen(heap_name)] = '\0';
             memRegion.nameSize = strlen(heap_name);
             memRegion.address = reinterpret_cast<u32>(address);
             OSReport("SENDING DEALLOCS!\n");
-            EXIPacket::CreateAndSend(CMD_SEND_DEALLOCS, &memRegion, sizeof(memRegion));
+            EXIPacket::CreateAndSend(EXICommand::CMD_SEND_DEALLOCS, &memRegion, sizeof(memRegion));
         }
     }
     u32 allocSizeTracker = 0;
@@ -408,16 +369,11 @@ namespace Match {
         );
         AllocGfMemoryPoolBeginHook(internal_heap_data, size, alignment);
         utils::RestoreRegs();
-        asm(
-            "lbz r7, 0x0024 (r3)\n\r"
-        );
     }
     void AllocGfMemoryPoolBeginHook(char** internal_heap_data, u32 size, u32 alignment)
     {
         char* heap_name = *internal_heap_data;
-        size_t heapNameSize = strlen(heap_name);
-        memCpy(allocHeapName, heap_name, heapNameSize);
-        allocHeapName[heapNameSize] = '\0';
+        strcpy(allocHeapName, heap_name);
         allocSizeTracker = size;
     }
     void allocGfMemoryPoolEndHook()
@@ -441,9 +397,6 @@ namespace Match {
         );
         FreeGfMemoryPoolHook(internal_heap_data, address);
         utils::RestoreRegs();
-        asm(
-            "addi r31, r3, 40\n\r"
-        );
     }
     void FreeGfMemoryPoolHook(char** internal_heap_data, u8* address)
     {
@@ -484,10 +437,10 @@ namespace FrameAdvance {
     // requests FrameData for specified frame from emulator and assigns it to inputs
     void GetInputsForFrame(u32 frame, FrameData* inputs) 
     {
-        OSReport("SENDING FRAMEDATA!\n");
-        EXIPacket::CreateAndSend(CMD_FRAMEDATA, &frame, sizeof(frame));
+        EXIPacket::CreateAndSend(EXICommand::CMD_FRAMEDATA, &frame, sizeof(frame));
         EXIHooks::readEXI(inputs, sizeof(FrameData), EXI_CHAN_1, 0, EXI_FREQ_32HZ);
         Util::FixFrameDataEndianness(inputs);
+        OSReport("RECIEVING INPUTS!\n");
     }
 
     // should be called on every simulation frame
@@ -519,7 +472,6 @@ namespace FrameAdvance {
         }
         OSEnableInterrupts();
         utils::RestoreRegs();
-        asm("addi r29, r31, 0x8\r\n");
     }
 
     void updateLowHook() 
@@ -532,10 +484,8 @@ namespace FrameAdvance {
             "mr padStatus, r26\r\n"
         );
         getGamePadStatusInjection(padSystem, padStatus);
+        OSReport("DONE PROCESSING INPUTS!\n");
         utils::RestoreRegs();
-        asm(
-            "lwz r4, -0x4390 (r13)\r\n"
-        );
     }
     void getGamePadStatusInjection(gfPadSystem* padSystem, u32 padStatus) 
     {
@@ -591,7 +541,6 @@ namespace FrameAdvance {
         }
         OSEnableInterrupts();
     }
-
     void handleFrameAdvanceHook() {
         utils::SaveRegs();
         setFrameAdvanceFromEmu();
@@ -600,14 +549,12 @@ namespace FrameAdvance {
             :
             : "r" (framesToAdvance)
         );
-        asm(
-            "cmplw r19, r24\n\t"
-        );
     }
     void setFrameAdvanceFromEmu() {
-        EXIPacket::CreateAndSend(CMD_FRAMEADVANCE);
+        EXIPacket::CreateAndSend(EXICommand::CMD_FRAMEADVANCE);
         EXIHooks::readEXI(&framesToAdvance, sizeof(u32), EXI_CHAN_1, 0, EXI_FREQ_32HZ);
         utils::swapByteOrder(framesToAdvance);
+        OSReport("Frames to Advance: %x\n", framesToAdvance);
     }
 }
 
@@ -622,7 +569,7 @@ namespace FrameLogic {
             Util::PopulatePlayerFrameData(playerFrame, Netplay::getGameSettings().localPlayerPort, localPlayerIdx);
             // sending inputs + current game frame
             OSReport("SENDING ONLINE INPUTS!\n");
-            EXIPacket::CreateAndSend(CMD_ONLINE_INPUTS, &playerFrame, sizeof(PlayerFrameData));
+            EXIPacket::CreateAndSend(EXICommand::CMD_ONLINE_INPUTS, &playerFrame, sizeof(PlayerFrameData));
         }
         else {
             OSReport("Invalid player index! Can't send inputs to emulator!\n");
@@ -635,8 +582,7 @@ namespace FrameLogic {
     void SendFrameCounterPointerLoc()
     {
         u32 frameCounterLocation = reinterpret_cast<u32>(&frameCounter);
-        OSReport("SENDING FRAME COUNTER LOCATION!\n");
-        EXIPacket::CreateAndSend(CMD_SEND_FRAMECOUNTERLOC, &frameCounterLocation, sizeof(u32));
+        EXIPacket::CreateAndSend(EXICommand::CMD_SEND_FRAMECOUNTERLOC, &frameCounterLocation, sizeof(u32));
     }
     const char* nonResimTasks = "ecMgr EffectManager";
     bool ShouldSkipGfTaskProcess(u32* gfTask, u32 task_type)
@@ -653,31 +599,21 @@ namespace FrameLogic {
         utils::SaveRegs();
         frameCounter = 0;
         utils::RestoreRegs();
-        asm (
-            "li r0, 0\n\t"
-        );
     }
     void updateFrameCounter()
     {
         utils::SaveRegs();
         frameCounter++;
         utils::RestoreRegs();
-        asm (
-            "lbz r0, 0x00ED (r30)\n\t"
-        );
     }
     void beginningOfMainGameLoop()
     {
         utils::SaveRegs();
         if (Netplay::IsInMatch()) {
             OSReport("SENDING CMD_TIMER_START!\n");
-            EXIPacket::CreateAndSend(CMD_TIMER_START);
+            EXIPacket::CreateAndSend(EXICommand::CMD_TIMER_START);
         }
         utils::RestoreRegs();
-        
-        asm (
-            "li r25, 1\n\t"
-        );
     }
     void beginFrame()
     {
@@ -714,30 +650,22 @@ namespace FrameLogic {
             #endif
             OSEnableInterrupts();
         }
+        
         utils::RestoreRegs();
-        asm (
-            "li r0, 0x1\n\t"
-        );
     }
     void endFrame()
     {
         utils::SaveRegs();
         if (Netplay::IsInMatch()) {
             OSReport("SENDING CMD_TIMER_END!\n");
-            EXIPacket::CreateAndSend(CMD_TIMER_END);
+            EXIPacket::CreateAndSend(EXICommand::CMD_TIMER_END);
         }
         utils::RestoreRegs();
-        asm (
-            "li r0, 0x0\n\t"
-        );
     }
     void endMainLoop()
     {
         utils::SaveRegs();
         utils::RestoreRegs();
-        asm (
-            "lwz r3, 0x100(r23)\n\t"
-        );
     }
     #if 1
     void gfTaskProcessHook()
@@ -749,22 +677,18 @@ namespace FrameLogic {
             "mr gfTask, r3\n\t"
             "mr task_type, r4\n\t"
         );
-        if(!ShouldSkipGfTaskProcess(gfTask, task_type))
+        if(ShouldSkipGfTaskProcess(gfTask, task_type))
         {
             utils::RestoreRegs();
-            asm (
-                "cmpwi r4, 0x8\n\t"
-            );
+            asm {
+                lis r12, 0x8002
+                ori r12, r12, 0xdd28
+                mtctr r12
+                bctr
+            }
         }
-        else 
-        {
+        else {
             utils::RestoreRegs();
-            asm (
-                "lis r12, 0x8002\n\t"
-                "ori r12, r12, 0xdd28\n\t"
-                "mtctr r12\n\t"
-                "bctr\n\t"
-            );
         }
     }
     #endif
@@ -789,10 +713,6 @@ namespace GMMelee {
     }
 
     void postSetupMelee() {
-        
-        asm (
-            "addi sp, sp, 48\n\t"
-        );
         utils::SaveRegs();
         OSDisableInterrupts();
         OSReport("postSetupMelee\n");
@@ -807,7 +727,7 @@ namespace GMMelee {
         if (isMatchChoicesPopulated) {
             OSReport("postSetupMelee stage: 0x%x p1: 0x%x p2: 0x%x\n", stageChoice, charChoices[0], charChoices[1]);
 
-            memCpy(g_gmGlobalModeMelee, (u8*)defaultGmGlobalModeMelee, 0x320);
+            memmove(g_gmGlobalModeMelee, defaultGmGlobalModeMelee, 0x320);
             u8* melee = (u8*)g_gmGlobalModeMelee;
 
             melee[P1_CHAR_ID_IDX] = charChoices[0];
@@ -867,12 +787,10 @@ namespace Netplay {
 
         OSReport("Starting match gameside\n");
         // send our populated game settings to the emu
-        EXIPacket startMatchPckt = EXIPacket(CMD_START_MATCH, &gameSettings, sizeof(GameSettings));
-        startMatchPckt.Send();
+        EXIPacket::CreateAndSend(EXICommand::CMD_START_MATCH, &gameSettings, sizeof(GameSettings));
 
         // start emu netplay thread so it can start trying to find an opponent
-        EXIPacket findOpponentPckt = EXIPacket(CMD_FIND_OPPONENT);
-        findOpponentPckt.Send();
+        EXIPacket::CreateAndSend(EXICommand::CMD_FIND_OPPONENT);
 
         // Temporary. Atm, this just stalls main thread while we do our mm/connecting
         // in the future, when netmenu stuff is implemented, the organization of StartMatching and CheckIsMatched
@@ -884,18 +802,18 @@ namespace Netplay {
     
     bool CheckIsMatched() {
         bool matched = false;
-        u8 cmd_byte = CMD_UNKNOWN;
+        u8 cmd_byte = EXICommand::CMD_UNKNOWN;
 
         // cmd byte + game settings
         size_t read_size = sizeof(GameSettings) + 1;
-        u8* read_data = new u8[read_size];
+        u8* read_data = (u8*)MemExpHooks::mallocExp(read_size);
 
         // stall until we get game settings from opponent, then load those in and continue to boot up the match
         //while (cmd_byte != EXICommand::CMD_SETUP_PLAYERS) {
             EXIHooks::readEXI(read_data, read_size, EXI_CHAN_1, 0, EXI_FREQ_32HZ);
             cmd_byte = read_data[0];
 
-            if (cmd_byte == CMD_SETUP_PLAYERS) {
+            if (cmd_byte == EXICommand::CMD_SETUP_PLAYERS) {
                 OSReport("SETUP PLAYERS GAMESIDE\n");
                 GameSettings gameSettingsFromOpponent = bufferToObject<GameSettings>(&read_data[1]);
                 OSReport("--SETUP CHARS--\nP1 char: %u  P2 char: %u\n--END SETUP CHARS--\n", (unsigned int)gameSettingsFromOpponent.playerSettings[0].charID, (unsigned int)gameSettingsFromOpponent.playerSettings[1].charID);
@@ -909,6 +827,7 @@ namespace Netplay {
                 //OSReport("Reading for setupplayers, didn't get it...\n");
             }
         //}
+        MemExpHooks::freeExp(read_data);
         return matched;
     }
 
@@ -920,81 +839,6 @@ namespace Netplay {
 
 }
 
-namespace MemoryHooks {
-    void fakeGFPoolAlloc1()
-    {
-        utils::SaveRegs();
-        u8 r3Value;
-        asm (
-            "mr %0, r3\n\t" 
-            : "=r" (r3Value)
-        );
-        if(r3Value != 0xFF)
-        {
-            utils::RestoreRegs();
-            asm (
-                "lis r6, 0x8049\n\t"
-            );
-        }
-        else {
-            utils::RestoreRegs();
-            register size_t r4Value;
-            asm (
-                "mr %0, r4\n\t"
-                "li r4, 32\n\t"
-                : "=r"(r4Value)
-            );
-            MemExpHooks::mallocExp(r4Value);
-        }
-    }
-    void fakeGFPoolAlloc2()
-    {
-        utils::SaveRegs();
-        u8 r3Value;
-        asm (
-            "mr %0, r3\n\t"
-            : "=r"(r3Value)
-        );
-        if(r3Value != 0xFF)
-        {
-            utils::RestoreRegs();
-            asm (
-                "lis r6, 0x8049\n\t"
-            );
-        }
-        else {
-            size_t r4Value;
-            utils::RestoreRegs();
-            asm (
-                "mr %0, r4\n\t"
-                "mr r4, r5\n\t"
-                : "=r" (r4Value)
-            );
-            MemExpHooks::mallocExp(r4Value);
-        }
-    }
-    void fakeGFPoolFree()
-    {
-        u32 r3PointerVal;
-        utils::SaveRegs();
-        asm (
-            "mr %0, r3\n\t"
-            : "=r" (r3PointerVal)
-        );
-        if(r3PointerVal <= reinterpret_cast<u32>(MemExpHooks::mainHeap))
-        {
-            utils::RestoreRegs();
-            MemExpHooks::freeExp(MemExpHooks::mainHeap);
-        }
-        else {
-            utils::RestoreRegs();
-            asm (
-                "stwu sp, -0x20(sp)\n\t"
-            );
-        }
-    }
-}
-
 namespace RollbackHooks {
     void InstallHooks() 
     {
@@ -1003,36 +847,19 @@ namespace RollbackHooks {
         SyringeCore::syHookFunction(0x806d4c10, reinterpret_cast<void*>(Match::StopGameScMeleeHook));
         SyringeCore::syHookFunction(0x806d176c, reinterpret_cast<void*>(Match::StartSceneMelee));
         SyringeCore::syHookFunction(0x806d4844, reinterpret_cast<void*>(Match::ExitSceneMelee));
-        SyringeCore::syHookFunction(0x80024aac, reinterpret_cast<void*>(Match::dumpAll_gfMemoryPool_hook));
-        SyringeCore::syHookFunction(0x8002625c, reinterpret_cast<void*>(Match::dump_gfMemoryPool_hook));
+        SyringeCore::syHookFunction(0x80026258, reinterpret_cast<void*>(Match::dump_gfMemoryPool_hook));
         SyringeCore::syHookFunction(0x80025c6c, reinterpret_cast<void*>(Match::alloc_gfMemoryPool_hook));
         SyringeCore::syHookFunction(0x80025ec4, reinterpret_cast<void*>(Match::allocGfMemoryPoolEndHook));
         SyringeCore::syHookFunction(0x80025f40, reinterpret_cast<void*>(Match::free_gfMemoryPool_hook));
-        SyringeCore::syHookFunction(0x80024a78, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::syHookFunction(0x80024a84, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::syHookFunction(0x80024a90, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::syHookFunction(0x80024adc, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::syHookFunction(0x80024aec, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::syHookFunction(0x80024ae0, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::syHookFunction(0x80026288, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::syHookFunction(0x8002619c, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::syHookFunction(0x800261b4, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::syHookFunction(0x800262e0, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::syHookFunction(0x800260fc, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::syHookFunction(0x80026114, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::syHookFunction(0x800260f0, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::syHookFunction(0x80026278, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::syHookFunction(0x800262ac, reinterpret_cast<void*>(utils::nop));
-        SyringeCore::syHookFunction(0x800260e0, reinterpret_cast<void*>(utils::nop));
 
         // FrameAdvance Namespace
         SyringeCore::syHookFunction(0x8004aa2c, reinterpret_cast<void*>(FrameAdvance::updateIpSwitchPreProcess));
         SyringeCore::syHookFunction(0x80029468, reinterpret_cast<void*>(FrameAdvance::updateLowHook));
-        SyringeCore::syHookFunction(0x800173a4, reinterpret_cast<void*>(FrameAdvance::handleFrameAdvanceHook));
+        SyringeCore::syHookFunction(0x800173a0, reinterpret_cast<void*>(FrameAdvance::handleFrameAdvanceHook));
 
         // FrameLogic Namespace
-        SyringeCore::syHookFunction(0x8002dc74, reinterpret_cast<void*>(FrameLogic::gfTaskProcessHook));
-        SyringeCore::syHookFunction(0x800174fc, reinterpret_cast<void*>(FrameLogic::endMainLoop));
+        //SyringeCore::syHookFunction(0x8002dc74, reinterpret_cast<void*>(FrameLogic::gfTaskProcessHook));
+        //SyringeCore::syHookFunction(0x800174fc, reinterpret_cast<void*>(FrameLogic::endMainLoop));
         SyringeCore::syHookFunction(0x801473a0, reinterpret_cast<void*>(FrameLogic::endFrame));
         SyringeCore::syHookFunction(0x800171b4, reinterpret_cast<void*>(FrameLogic::beginningOfMainGameLoop));
         SyringeCore::syHookFunction(0x80017760, reinterpret_cast<void*>(FrameLogic::updateFrameCounter));

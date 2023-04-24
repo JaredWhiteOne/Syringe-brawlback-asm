@@ -36,7 +36,7 @@ template<typename T>
 T bufferToObject(u8* buffer)
 {
   T obj;
-  memCpy(&obj, buffer, sizeof(T));
+  memmove(&obj, buffer, sizeof(T));
   return obj;
 }
 
