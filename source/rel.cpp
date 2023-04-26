@@ -28,6 +28,7 @@ namespace Syringe {
             (*ctor)();
         }
         SyringeCore::syInit();
+        MemExpHooks::initializeMemory((void*) 0x93604000, 0x4000);
         RollbackHooks::InstallHooks();
     }
 

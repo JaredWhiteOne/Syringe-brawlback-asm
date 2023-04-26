@@ -15,7 +15,7 @@ EXIPacket::EXIPacket() {
     }
 
     // copy EXICmd byte into packet
-    memmove(new_packet, &EXICmd, sizeof(EXICmd));
+    utils::myMemmove(new_packet, &EXICmd, sizeof(EXICmd));
 
     // set our size/src ptr so the Send() function knows how much/what to send
     this->size = new_size;
@@ -32,7 +32,7 @@ EXIPacket::EXIPacket(u8 EXICmd) {
     }
 
     // copy EXICmd byte into packet
-    memmove(new_packet, &EXICmd, sizeof(EXICmd));
+    utils::myMemmove(new_packet, &EXICmd, sizeof(EXICmd));
 
     // set our size/src ptr so the Send() function knows how much/what to send
     this->size = new_size;
@@ -53,11 +53,11 @@ EXIPacket::EXIPacket(u8 EXICmd, void* source, u32 size) {
     }
 
     // copy EXICmd byte into packet
-    memmove(new_packet, &EXICmd, sizeof(EXICmd));
+    utils::myMemmove(new_packet, &EXICmd, sizeof(EXICmd));
 
     if (source) {
         // copy actual packet into our buffer
-        memmove(new_packet + sizeof(EXICmd), source, size);
+        utils::myMemmove(new_packet + sizeof(EXICmd), source, size);
     }
 
     // set our size/src ptr so the Send() function knows how much/what to send
@@ -94,14 +94,10 @@ void EXIPacket::CreateAndSend(u8 EXICmd, void* source, u32 size) {
     u8* new_packet = (u8*)MemExpHooks::mallocExp(new_size);
 
     // copy EXICmd byte into packet
-    memmove(new_packet, &EXICmd, sizeof(EXICmd));
-    OSReport("REPORTED COMMAND BIT: %x\n", EXICmd);
-    OSReport("REPORTED COMMAND BIT SIZE: %x\n", sizeof(EXICmd));
-    OSReport("CREATED COMMAND BIT: %x\n", new_packet[0]);
+    utils::myMemmove(new_packet, &EXICmd, sizeof(EXICmd));
     if (source != NULL) {
         // copy actual packet into our buffer
-        memmove(new_packet + sizeof(EXICmd), source, size);
-        OSReport("COPIED DATA SUCCESSFULLY!\n");
+        utils::myMemmove(new_packet + sizeof(EXICmd), source, size);
     }
     EXIHooks::writeEXI(new_packet, new_size, EXI_CHAN_1, 0, EXI_FREQ_32HZ);
     MemExpHooks::freeExp(new_packet);

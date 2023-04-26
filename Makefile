@@ -104,7 +104,7 @@ $(BUILD):
 	@[ -d $@ ] || mkdir -p $@
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 ifdef ADDR
-	py -3 ./convertMap.py $(TARGET).map $(ADDR) $(TARGET)-dolphin.map
+	py -3 ./tools/convertMap.py $(TARGET).map $(ADDR) $(TARGET)-dolphin.map
 endif
 
 

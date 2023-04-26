@@ -96,7 +96,7 @@ _noBex:
     stw r6, 0x2394(r7) # /
 
 _createHeap:
-    lis r4, 2
+    lis r4, 1
     addi r5, r31, 0x10
     lis r6, 0x8049
     ori r6, r6, 0x4D18

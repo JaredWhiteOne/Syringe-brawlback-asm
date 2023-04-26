@@ -5,6 +5,7 @@
 #include "MEM/mem_expHeap.h"
 #include "OS/OSCache.h"
 #include "mem_exp_hooks.h"
+#include "BrawlbackTypes.h"
 
 namespace EXIHooks {
     void writeEXI(void* source, u32 size, EXIChannel channel, u32 device, EXIFreq frequency);

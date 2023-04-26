@@ -5,15 +5,18 @@
 805a0140: g_efScreen
 805A02D0: g_IfMngr
 27,6,58D8: g_stTriggerMng
-805a00e0:g_GameGlobal
+805a00e0: g_GameGlobal
 27,6,2E68: g_ftManager
 27,6,2E70: g_ftAudienceManager
 27,6,5518: g_aiMgr
 27,6,E8: g_soWorld
-8059FF80:g_gfSceneRoot
-805a00b8:g_mtRandDefault
-805a0420:g_mtRandOther
-901812a0:g_GameFrame
+8059FF80: g_gfSceneRoot
+805a00b8: g_mtRandDefault
+805a0420: g_mtRandOther
+901812a0: g_GameFrame
+805bacc0: g_PadSystem
+90ff50c0: g_scMelee
+90180f20: g_gmGlobalModeMelee
 
 // System
 803f1254:__save_fpr
@@ -960,3 +963,6 @@
 
 //sndSystem
 800742b0:playSE__9sndSystemFiiiii
+
+//casts
+803f0f44:__dynamic_cast

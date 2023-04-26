@@ -25,23 +25,22 @@
 #define ROLLBACK_IMPL
 #endif
 
-u32 getCurrentFrame();
+bu32 getCurrentFrame();
 
 void fillOutGameSettings(GameSettings& settings);
 void MergeGameSettingsIntoGame(GameSettings& settings);
 extern bool canRollback;
-extern u32 frameCounter;
+extern bu32 frameCounter;
 extern bool shouldTrackAllocs;
 extern bool doDumpList;
 extern bool isRollback;
-extern u32 frameCounter;
 
 namespace FrameLogic {
     // Functions
-    void WriteInputsForFrame(u32 currentFrame);
-    void FrameDataLogic(u32 currentFrame);
+    void WriteInputsForFrame(bu32 currentFrame);
+    void FrameDataLogic(bu32 currentFrame);
     void SendFrameCounterPointerLoc();
-    bool ShouldSkipGfTaskProcess(u32* gfTask, u32 task_type);
+    bool ShouldSkipGfTaskProcess(bu32* gfTask, bu32 task_type);
 
     // Hooks
     void initFrameCounter();
@@ -54,17 +53,17 @@ namespace FrameLogic {
 }
 namespace FrameAdvance {
     // Variables
-    extern u32 framesToAdvance;
+    extern bu32 framesToAdvance;
     extern FrameData currentFrameData;
     
     // Functions
-    u32 getFramesToAdvance();
-    void TriggerFastForwardState(u8 numFramesToFF);
+    bu32 getFramesToAdvance();
+    void TriggerFastForwardState(bu8 numFramesToFF);
     void StallOneFrame();
     void ResetFrameAdvance();
-    void GetInputsForFrame(u32 frame, FrameData* inputs);
+    void GetInputsForFrame(bu32 frame, FrameData* inputs);
     void ProcessGameSimulationFrame(FrameData* inputs);
-    void getGamePadStatusInjection(gfPadSystem* padSystem, u32 padStatus);
+    void getGamePadStatusInjection(gfPadSystem* padSystem, bu32 padStatus);
     void setFrameAdvanceFromEmu();
 
     // Hooks
@@ -84,14 +83,17 @@ namespace Util {
     void printInputs(const BrawlbackPad& pad);
     void printGameInputs(const gfPadStatus& pad);
     void printFrameData(const FrameData& fd);
-    void SyncLog(const BrawlbackPad& pad, u8 playerIdx);
+    void SyncLog(const BrawlbackPad& pad, bu8 playerIdx);
     void FixFrameDataEndianness(FrameData* fd);
     BrawlbackPad GamePadToBrawlbackPad(const gfPadStatus& pad);
-    void PopulatePlayerFrameData(PlayerFrameData& pfd, u8 port, u8 pIdx);
+    void PopulatePlayerFrameData(PlayerFrameData& pfd, bu8 port, bu8 pIdx);
     void InjectBrawlbackPadToPadStatus(gfPadStatus& gamePad, const BrawlbackPad& pad, int port);
-    void SaveState(u32 currentFrame);
+    void SaveState(bu32 currentFrame);
 }
 namespace Match {
+    extern bu32 allocSizeTracker;
+    extern char allocHeapName[20];
+
     void PopulateGameReport(GameReport& report);
     void SendGameReport(GameReport& report);
     void StopGameScMeleeHook();
@@ -111,8 +113,8 @@ namespace Match {
 namespace Netplay {
     // Variables
     extern GameSettings gameSettings;
-    extern const u8 localPlayerIdxInvalid;
-    extern u8 localPlayerIdx;
+    extern const bu8 localPlayerIdxInvalid;
+    extern bu8 localPlayerIdx;
     extern bool isInMatch;
 
     // Functions
@@ -128,19 +130,19 @@ namespace Netplay {
 }
 
 namespace NetMatchMakingStatus {
-    const u32 LinkDown = 0x0;
-    const u32 LinkUp = 0x1;
-    const u32 DWCReady = 0x2;
-    const u32 WaitLogin = 0x3;
-    const u32 Download = 0x4;
-    const u32 Online = 0x5;
-    const u32 MatchingStart = 0x6;
-    const u32 Matching = 0x7;
-    const u32 MatchingWaitShare = 0x8;
-    const u32 P2P = 0x9;
-    const u32 DisconnectAll = 0xa;
-    const u32 WaitShutdown = 0xb;
-    const u32 Error = 0xc;
+    const bu32 LinkDown = 0x0;
+    const bu32 LinkUp = 0x1;
+    const bu32 DWCReady = 0x2;
+    const bu32 WaitLogin = 0x3;
+    const bu32 Download = 0x4;
+    const bu32 Online = 0x5;
+    const bu32 MatchingStart = 0x6;
+    const bu32 Matching = 0x7;
+    const bu32 MatchingWaitShare = 0x8;
+    const bu32 P2P = 0x9;
+    const bu32 DisconnectAll = 0xa;
+    const bu32 WaitShutdown = 0xb;
+    const bu32 Error = 0xc;
 }
 
 namespace Scene {
@@ -169,6 +171,7 @@ namespace GMMelee {
     extern bool isMatchChoicesPopulated;
     extern int charChoices[MAX_NUM_PLAYERS];
     extern int stageChoice;
+    extern const char* relevantHeaps;
     #define STAGE_ID_IDX 27
 
     // Functions

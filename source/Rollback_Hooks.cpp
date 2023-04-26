@@ -7,28 +7,36 @@
 #define P2_CHAR_ID_IDX P1_CHAR_ID_IDX + 0x5C
 #define P3_CHAR_ID_IDX P2_CHAR_ID_IDX + 0x5C
 #define P4_CHAR_ID_IDX P3_CHAR_ID_IDX + 0x5C
-u32 frameCounter = 0;
+bu32 frameCounter = 0;
 bool shouldTrackAllocs = false;
 bool doDumpList = false;
 bool isRollback = false;
 
-u32 getCurrentFrame() {
+bu32 getCurrentFrame() {
     return frameCounter;
 }
 
 bool gameHasStarted() {
-    return reinterpret_cast<scMelee*>(gfSceneManager::getInstance()->searchScene("scMelee"))->m_operatorReadyGo->isEnd() != 0;
+    scMelee* melee = dynamic_cast<scMelee*>(gfSceneManager::getInstance()->searchScene("scMelee"));
+    if(melee)
+    {
+        return melee->m_operatorReadyGo->isEnd() != 0;
+    }
+    else 
+    {
+        return false;
+    }
 }
 
 void fillOutGameSettings(GameSettings& settings) {
     settings.randomSeed = g_mtRandDefault->seed;
-    settings.stageID = g_gmGlobalModeMelee->m_meleeInitData.m_stageID;
+    settings.stageID = g_GameGlobal->m_modeMelee->m_meleeInitData.m_stageID;
 
-    u8 p1_id = *(((u8*)g_gmGlobalModeMelee)+P1_CHAR_ID_IDX);
-    OSReport("P1 pre-override char id: %u\n", (unsigned int)p1_id);
+    bu8 p1_id = g_GameGlobal->m_modeMelee->m_playersInitData[0].m_slotID;
+    OSReport("P1 pre-override char id: %d\n", p1_id);
     
-    u8 p2_id = *(((u8*)g_gmGlobalModeMelee)+P2_CHAR_ID_IDX);
-    OSReport("P2 pre-override char id: %u\n", (unsigned int)p2_id);
+    bu8 p2_id = g_GameGlobal->m_modeMelee->m_playersInitData[1].m_slotID;
+    OSReport("P2 pre-override char id: %d\n", p2_id);
 
     // brawl loads all players into the earliest slots.
     // I.E. if players choose P1 and P3, they will get loaded into P1 and P2
@@ -40,7 +48,7 @@ void fillOutGameSettings(GameSettings& settings) {
     // sequence. Gotta find another way to get it, or some better spot to grab the number of players
     settings.numPlayers = 2;
     OSReport("Num Players: %u\n", (unsigned int)settings.numPlayers);
-    PlayerSettings* playerSettings = (PlayerSettings*)MemExpHooks::mallocExp(sizeof(PlayerSettings) * settings.numPlayers);
+    PlayerSettings playerSettings[2];
     playerSettings[0].charID = p1_id;
     playerSettings[1].charID = p2_id;
     
@@ -60,12 +68,12 @@ void MergeGameSettingsIntoGame(GameSettings& settings) {
     //GM_GLOBAL_MODE_MELEE->stageID = 2;
 
     Netplay::localPlayerIdx = settings.localPlayerIdx;
-    OSReport("Local player index is %u\n", (unsigned int)Netplay::localPlayerIdx);
+    OSReport("Local player index is %d\n", Netplay::localPlayerIdx);
 
-    u8 p1_char = settings.playerSettings[0].charID;
-    u8 p2_char = settings.playerSettings[1].charID;
-    OSReport("P1 char: %u  P2 char: %u\n", (unsigned int)p1_char, (unsigned int)p2_char);
-    OSReport("Stage id: %u\n", (unsigned int)settings.stageID);
+    bu8 p1_char = settings.playerSettings[0].charID;
+    bu8 p2_char = settings.playerSettings[1].charID;
+    OSReport("P1 char: %d  P2 char: %d\n", p1_char, p2_char);
+    OSReport("Stage id: %d\n", settings.stageID);
 
     int chars[MAX_NUM_PLAYERS] = {p1_char, p2_char, -1, -1};
     GMMelee::PopulateMatchSettings(chars, settings.stageID );
@@ -108,7 +116,7 @@ namespace Util {
         }
     }
 
-    void SyncLog(const BrawlbackPad& pad, u8 playerIdx) {
+    void SyncLog(const BrawlbackPad& pad, bu8 playerIdx) {
         OSReport("[Sync] Injecting inputs for player %u on frame %u\n", (unsigned int)playerIdx, getCurrentFrame());
         printInputs(pad);
         OSReport("[/Sync]\n");
@@ -170,7 +178,7 @@ namespace Util {
         return ret;
     }
 
-    void PopulatePlayerFrameData(PlayerFrameData& pfd, u8 port, u8 pIdx) {
+    void PopulatePlayerFrameData(PlayerFrameData& pfd, bu8 port, bu8 pIdx) {
         if(gameHasStarted())
         {
             ftManager* fighterManager = g_ftManager;
@@ -183,7 +191,7 @@ namespace Util {
             pfd.syncData.anim = fighter->m_moduleAccesser->getStatusModule()->getStatusKind();
             
             pfd.syncData.percent = (float)ftowner->getDamage();
-            pfd.syncData.stocks = (u8)ftowner->getStockCount();
+            pfd.syncData.stocks = (bu8)ftowner->getStockCount();
         }
         
         pfd.pad = Util::GamePadToBrawlbackPad(g_PadSystem->gcPads[port]);
@@ -195,8 +203,8 @@ namespace Util {
         // TODO: do this once on match start or whatever, so we don't need to access this so often and lose cpu cycles
         //bool isNotConnected = Netplay::getGameSettings().playerSettings[port].playerType == PlayerType::PLAYERTYPE_NONE;
         // get current char selection and if none, the set as not connected
-        u8 charId = *(((u8*)g_gmGlobalModeMelee)+P1_CHAR_ID_IDX + (port*92));
-        // u8 charId = GM_GLOBAL_MODE_MELEE->playerData[port].charId;
+        bu8 charId = *(((bu8*)g_GameGlobal->m_modeMelee)+P1_CHAR_ID_IDX + (port*92));
+        // bu8 charId = GM_GLOBAL_MODE_MELEE->playerData[port].charId;
         bool isNotConnected = charId == -1;
         // GM_GLOBAL_MODE_MELEE->playerData[port].playerType = isNotConnected ? 03 : 0 ; // Set to Human
         
@@ -224,15 +232,13 @@ namespace Util {
 
     }
 
-    void SaveState(u32 currentFrame) {
-        OSReport("SENDING CAPTURE SAVESTATE!\n");
+    void SaveState(bu32 currentFrame) {
         EXIPacket::CreateAndSend(EXICommand::CMD_CAPTURE_SAVESTATE, &currentFrame, sizeof(currentFrame));
     }
 }
 
 namespace Match {
     const char* relevantHeaps = "System WiiPad IteamResource InfoResource CommonResource CopyFB Physics ItemInstance Fighter1Resoruce Fighter2Resoruce Fighter1Resoruce2 Fighter2Resoruce2 Fighter1Instance Fighter2Instance FighterTechqniq InfoInstance InfoExtraResource GameGlobal FighterKirbyResource1 GlobalMode OverlayCommon Tmp OverlayStage ItemExtraResource FighterKirbyResource2 FighterKirbyResource3";
-
     void PopulateGameReport(GameReport& report)
     {
         ftManager* fighterManager = g_ftManager;
@@ -250,12 +256,11 @@ namespace Match {
     }
     void SendGameReport(GameReport& report)
     {
-        OSReport("Sending end match report to emu. Num players = %u\n", (u32)Netplay::getGameSettings().numPlayers);
         EXIPacket::CreateAndSend(EXICommand::CMD_MATCH_END, &report, sizeof(report));
     }
     void StopGameScMeleeHook()
     {
-        
+        utils::SaveRegs();
         OSReport("Game report in stopGameScMeleeBeginningHook hook\n");
         if (Netplay::getGameSettings().numPlayers > 1) {
             #if 0  // toggle for sending end match game stats
@@ -264,6 +269,7 @@ namespace Match {
             SendGameReport(report);
             #endif
         }
+        utils::RestoreRegs();
     }
     void StartSceneMelee()
     {
@@ -271,7 +277,7 @@ namespace Match {
         OSDisableInterrupts();
         OSReport("  ~~~~~~~~~~~~~~~~  Start Scene Melee  ~~~~~~~~~~~~~~~~  \n");
         #ifdef NETPLAY_IMPL
-        //Netplay::StartMatching(); // now moved to GmGlobalModeMelee.cpp
+        //Netplay::StartMatching(); // now moved to m_modeMelee.cpp
         Netplay::SetIsInMatch(true);
         #else
         // 'debug' values
@@ -320,10 +326,9 @@ namespace Match {
             SavestateMemRegionInfo memRegion;
             memRegion.address = addr_start; // might be bad cast... 64 bit ptr to 32 bit int
             memRegion.size = mem_size;
-            memmove(memRegion.nameBuffer, heap_name, strlen(heap_name));
+            utils::myMemmove(memRegion.nameBuffer, heap_name, strlen(heap_name));
             memRegion.nameBuffer[strlen(heap_name)] = '\0';
             memRegion.nameSize = strlen(heap_name);
-            OSReport("SENDING DUMPALL!\n");
             EXIPacket::CreateAndSend(EXICommand::CMD_SEND_DUMPALL, &memRegion, sizeof(SavestateMemRegionInfo));
         }
     }
@@ -332,12 +337,11 @@ namespace Match {
         if (shouldTrackAllocs && strstr(relevantHeaps, heap_name) != NULL && !isRollback) {
             //OSReport("ALLOC: size = 0x%08x  allocated addr = 0x%08x\n", size, allocated_addr);
             SavestateMemRegionInfo memRegion;
-            memRegion.address = reinterpret_cast<u32>(allocated_addr); // might be bad cast... 64 bit ptr to 32 bit int
+            memRegion.address = reinterpret_cast<bu32>(allocated_addr); // might be bad cast... 64 bit ptr to 32 bit int
             memRegion.size = size;
-            memmove(memRegion.nameBuffer, heap_name, strlen(heap_name));
+            utils::myMemmove(memRegion.nameBuffer, heap_name, strlen(heap_name));
             memRegion.nameBuffer[strlen(heap_name)] = '\0';
             memRegion.nameSize = strlen(heap_name);
-            OSReport("SENDING ALLOCS!\n");
             EXIPacket::CreateAndSend(EXICommand::CMD_SEND_ALLOCS, &memRegion, sizeof(memRegion));
         }
     }
@@ -346,26 +350,26 @@ namespace Match {
         if (shouldTrackAllocs && strstr(relevantHeaps, heap_name) != NULL && !isRollback) {
             //OSReport("FREE: addr = 0x%08x\n", address);
             SavestateMemRegionInfo memRegion;
-            memmove(memRegion.nameBuffer, heap_name, strlen(heap_name));
+            utils::myMemmove(memRegion.nameBuffer, heap_name, strlen(heap_name));
             memRegion.nameBuffer[strlen(heap_name)] = '\0';
             memRegion.nameSize = strlen(heap_name);
-            memRegion.address = reinterpret_cast<u32>(address);
-            OSReport("SENDING DEALLOCS!\n");
+            memRegion.address = reinterpret_cast<bu32>(address);
             EXIPacket::CreateAndSend(EXICommand::CMD_SEND_DEALLOCS, &memRegion, sizeof(memRegion));
         }
     }
-    u32 allocSizeTracker = 0;
+    bu32 allocSizeTracker = 0;
     char allocHeapName[20];
     void alloc_gfMemoryPool_hook()
     {
         utils::SaveRegs();
-        register char** internal_heap_data;
-        register u32 size;
-        register u32 alignment;
+        char** internal_heap_data;
+        u32 size;
+        u32 alignment;
         asm(
-            "mr internal_heap_data, r3\n\t"
-            "mr size, r4\n\t"
-            "mr alignment, r5\n\t"
+            "mr %0, r3\n\t"
+            "mr %1, r4\n\t"
+            "mr %2, r5\n\t" 
+            : "=r"(internal_heap_data), "=r"(size), "=r"(alignment)
         );
         AllocGfMemoryPoolBeginHook(internal_heap_data, size, alignment);
         utils::RestoreRegs();
@@ -373,15 +377,17 @@ namespace Match {
     void AllocGfMemoryPoolBeginHook(char** internal_heap_data, u32 size, u32 alignment)
     {
         char* heap_name = *internal_heap_data;
-        strcpy(allocHeapName, heap_name);
+        utils::myMemmove(allocHeapName, heap_name, strlen(heap_name));
+        allocHeapName[strlen(heap_name)] = '\0';
         allocSizeTracker = size;
     }
     void allocGfMemoryPoolEndHook()
     {
         utils::SaveRegs();
-        register u8* alloc_addr;
+        u8* alloc_addr;
         asm(
-            "mr alloc_addr, r30\n\r"
+            "mr %0, r30\n\r"
+            : "=r"(alloc_addr)
         );
         ProcessGameAllocation(alloc_addr, allocSizeTracker, allocHeapName);
         utils::RestoreRegs();
@@ -389,16 +395,17 @@ namespace Match {
     void free_gfMemoryPool_hook()
     {
         utils::SaveRegs();
-        register char** internal_heap_data;
-        register u8* address;
+        char** internal_heap_data;
+        u8* address;
         asm(
-            "mr internal_heap_data, r3\n\r"
-            "mr address, r4 \n\r"
+            "mr %0, r3\n\r"
+            "mr %1, r4 \n\r"
+            : "=r"(internal_heap_data), "=r"(address)
         );
         FreeGfMemoryPoolHook(internal_heap_data, address);
         utils::RestoreRegs();
     }
-    void FreeGfMemoryPoolHook(char** internal_heap_data, u8* address)
+    void FreeGfMemoryPoolHook(char** internal_heap_data, bu8* address)
     {
         char* heap_name = *internal_heap_data;
         ProcessGameFree(address, heap_name);
@@ -406,14 +413,14 @@ namespace Match {
 }
 
 namespace FrameAdvance {
-    u32 framesToAdvance = 1;
+    bu32 framesToAdvance = 1;
     FrameData currentFrameData;
-    u32 getFramesToAdvance() 
+    bu32 getFramesToAdvance() 
     { 
         return framesToAdvance; 
     }
 
-    void TriggerFastForwardState(u8 numFramesToFF) 
+    void TriggerFastForwardState(bu8 numFramesToFF) 
     {
         if (framesToAdvance == 1 && numFramesToFF > 0) {
             framesToAdvance = numFramesToFF;
@@ -435,61 +442,52 @@ namespace FrameAdvance {
 
 
     // requests FrameData for specified frame from emulator and assigns it to inputs
-    void GetInputsForFrame(u32 frame, FrameData* inputs) 
+    void GetInputsForFrame(bu32 frame, FrameData* inputs) 
     {
         EXIPacket::CreateAndSend(EXICommand::CMD_FRAMEDATA, &frame, sizeof(frame));
         EXIHooks::readEXI(inputs, sizeof(FrameData), EXI_CHAN_1, 0, EXI_FREQ_32HZ);
         Util::FixFrameDataEndianness(inputs);
-        OSReport("RECIEVING INPUTS!\n");
     }
 
     // should be called on every simulation frame
     void ProcessGameSimulationFrame(FrameData* inputs) 
     {
-        OSDisableInterrupts();
-        u32 gameLogicFrame = getCurrentFrame();
+        bu32 gameLogicFrame = getCurrentFrame();
         //OSReport("ProcessGameSimulationFrame %u \n", gameLogicFrame);
 
         // save state on each simulated frame (this includes resim frames)
         Util::SaveState(gameLogicFrame);
 
         GetInputsForFrame(gameLogicFrame, inputs);
-        gameLogicFrame = getCurrentFrame();
 
         //OSReport("Using inputs %u %u  game frame: %u\n", inputs->playerFrameDatas[0].frame, inputs->playerFrameDatas[1].frame, gameLogicFrame);
         
         //Util::printFrameData(*inputs);
-
-        OSEnableInterrupts();
     }
 
     void updateIpSwitchPreProcess() 
     {
         utils::SaveRegs();
-        OSDisableInterrupts();
         if (Netplay::IsInMatch()) {
             ProcessGameSimulationFrame(&currentFrameData);
         }
-        OSEnableInterrupts();
         utils::RestoreRegs();
     }
 
     void updateLowHook() 
     {
         utils::SaveRegs();
-        register gfPadSystem* padSystem; 
-        register u32 padStatus;
+        register gfPadSystem* padSystem;
+        register bu32 padStatus;
         asm(
             "mr padSystem, r25\r\n"
             "mr padStatus, r26\r\n"
         );
         getGamePadStatusInjection(padSystem, padStatus);
-        OSReport("DONE PROCESSING INPUTS!\n");
         utils::RestoreRegs();
     }
-    void getGamePadStatusInjection(gfPadSystem* padSystem, u32 padStatus) 
+    void getGamePadStatusInjection(gfPadSystem* padSystem, bu32 padStatus) 
     {
-        OSDisableInterrupts();
         // OSReport("PAD %i 0x%x\n", 0, &PAD_SYSTEM->sysPads[0]);
         // OSReport("PAD %i 0x%x\n", 1, &PAD_SYSTEM->sysPads[1]);
         // OSReport("PAD %i 0x%x\n", 2, &PAD_SYSTEM->sysPads[2]);
@@ -539,53 +537,60 @@ namespace FrameAdvance {
             // }
 
         }
-        OSEnableInterrupts();
+    }
+    asm void frameAdvanceCompare(register bu32 framesToAdvance)
+    {
+        fralloc
+        cmplw r19, framesToAdvance
+        frfree
+        blr
     }
     void handleFrameAdvanceHook() {
         utils::SaveRegs();
         setFrameAdvanceFromEmu();
+        frameAdvanceCompare(framesToAdvance);
         utils::RestoreRegs();
-        asm("mr r24, %0"
-            :
-            : "r" (framesToAdvance)
-        );
+        asm {
+            lis r12, 0x8001
+            ori r12, r12, 0x73a8
+            mtctr r12
+            bctr
+        }
     }
     void setFrameAdvanceFromEmu() {
         EXIPacket::CreateAndSend(EXICommand::CMD_FRAMEADVANCE);
-        EXIHooks::readEXI(&framesToAdvance, sizeof(u32), EXI_CHAN_1, 0, EXI_FREQ_32HZ);
+        EXIHooks::readEXI(&framesToAdvance, sizeof(bu32), EXI_CHAN_1, 0, EXI_FREQ_32HZ);
         utils::swapByteOrder(framesToAdvance);
-        OSReport("Frames to Advance: %x\n", framesToAdvance);
     }
 }
 
 namespace FrameLogic {
-    void WriteInputsForFrame(u32 currentFrame)
+    void WriteInputsForFrame(bu32 currentFrame)
     {
-        u8 localPlayerIdx = Netplay::localPlayerIdx;
+        bu8 localPlayerIdx = Netplay::localPlayerIdx;
         if (localPlayerIdx != Netplay::localPlayerIdxInvalid) {
             PlayerFrameData playerFrame;
             playerFrame.frame = currentFrame;
             playerFrame.playerIdx = localPlayerIdx;
             Util::PopulatePlayerFrameData(playerFrame, Netplay::getGameSettings().localPlayerPort, localPlayerIdx);
             // sending inputs + current game frame
-            OSReport("SENDING ONLINE INPUTS!\n");
             EXIPacket::CreateAndSend(EXICommand::CMD_ONLINE_INPUTS, &playerFrame, sizeof(PlayerFrameData));
         }
         else {
             OSReport("Invalid player index! Can't send inputs to emulator!\n");
         }
     }
-    void FrameDataLogic(u32 currentFrame)
+    void FrameDataLogic(bu32 currentFrame)
     {
         WriteInputsForFrame(currentFrame);
     }
     void SendFrameCounterPointerLoc()
     {
-        u32 frameCounterLocation = reinterpret_cast<u32>(&frameCounter);
-        EXIPacket::CreateAndSend(EXICommand::CMD_SEND_FRAMECOUNTERLOC, &frameCounterLocation, sizeof(u32));
+        bu32 frameCounterLocation = reinterpret_cast<bu32>(&frameCounter);
+        EXIPacket::CreateAndSend(EXICommand::CMD_SEND_FRAMECOUNTERLOC, &frameCounterLocation, sizeof(bu32));
     }
     const char* nonResimTasks = "ecMgr EffectManager";
-    bool ShouldSkipGfTaskProcess(u32* gfTask, u32 task_type)
+    bool ShouldSkipGfTaskProcess(bu32* gfTask, bu32 task_type)
     {
         if (FrameAdvance::getFramesToAdvance() > 1) { // if we're resimulating, disable certain tasks that don't need to run on resim frames.
             char* taskName = (char*)(*gfTask); // 0x0 offset of gfTask* is the task name
@@ -610,7 +615,6 @@ namespace FrameLogic {
     {
         utils::SaveRegs();
         if (Netplay::IsInMatch()) {
-            OSReport("SENDING CMD_TIMER_START!\n");
             EXIPacket::CreateAndSend(EXICommand::CMD_TIMER_START);
         }
         utils::RestoreRegs();
@@ -618,7 +622,7 @@ namespace FrameLogic {
     void beginFrame()
     {
         utils::SaveRegs();
-        u32 currentFrame = getCurrentFrame();
+        bu32 currentFrame = getCurrentFrame();
 
         //Util::printGameInputs(PAD_SYSTEM->pads[0]);
 
@@ -628,14 +632,10 @@ namespace FrameLogic {
         // you can think of the control flow going like this
         // this function -> write data to emulator through exi -> emulator processes data and possibly queues up data
         // to send back to the game -> send data to the game if there is any -> game processes that data -> repeat
-
         if (Netplay::IsInMatch()) {
-            OSDisableInterrupts();
             // reset flag to be used later
             // just resimulated/stalled/skipped/whatever, reset to normal
             FrameAdvance::ResetFrameAdvance();
-            OSReport("------ Frame %u ------\n", frameCounter);
-            OSReport("------ Frame Location 0x%x ------\n", &frameCounter);
             // lol
             g_mtRandDefault->seed = 0x496ffd00;
 
@@ -648,7 +648,6 @@ namespace FrameLogic {
                     shouldTrackAllocs = true;
                 }
             #endif
-            OSEnableInterrupts();
         }
         
         utils::RestoreRegs();
@@ -657,7 +656,6 @@ namespace FrameLogic {
     {
         utils::SaveRegs();
         if (Netplay::IsInMatch()) {
-            OSReport("SENDING CMD_TIMER_END!\n");
             EXIPacket::CreateAndSend(EXICommand::CMD_TIMER_END);
         }
         utils::RestoreRegs();
@@ -667,12 +665,11 @@ namespace FrameLogic {
         utils::SaveRegs();
         utils::RestoreRegs();
     }
-    #if 1
     void gfTaskProcessHook()
     {
         utils::SaveRegs();
-        register u32* gfTask; 
-        register u32 task_type;
+        register bu32* gfTask; 
+        register bu32 task_type;
         asm (
             "mr gfTask, r3\n\t"
             "mr task_type, r4\n\t"
@@ -691,7 +688,6 @@ namespace FrameLogic {
             utils::RestoreRegs();
         }
     }
-    #endif
 }
 
 namespace GMMelee {
@@ -727,27 +723,24 @@ namespace GMMelee {
         if (isMatchChoicesPopulated) {
             OSReport("postSetupMelee stage: 0x%x p1: 0x%x p2: 0x%x\n", stageChoice, charChoices[0], charChoices[1]);
 
-            memmove(g_gmGlobalModeMelee, defaultGmGlobalModeMelee, 0x320);
-            u8* melee = (u8*)g_gmGlobalModeMelee;
+            utils::myMemmove(g_GameGlobal->m_modeMelee, defaultGmGlobalModeMelee, 0x320);
 
-            melee[P1_CHAR_ID_IDX] = charChoices[0];
-            melee[P2_CHAR_ID_IDX] = charChoices[1];
-            g_gmGlobalModeMelee->m_playersInitData[0].m_slotID = charChoices[0];
-            g_gmGlobalModeMelee->m_playersInitData[1].m_slotID = charChoices[1];
+            g_GameGlobal->m_modeMelee->m_playersInitData[0].m_slotID = charChoices[0];
+            g_GameGlobal->m_modeMelee->m_playersInitData[1].m_slotID = charChoices[1];
             
-            g_gmGlobalModeMelee->m_playersInitData[0].m_initState = 0;
-            g_gmGlobalModeMelee->m_playersInitData[1].m_initState = 0;
+            g_GameGlobal->m_modeMelee->m_playersInitData[0].m_initState = 0;
+            g_GameGlobal->m_modeMelee->m_playersInitData[1].m_initState = 0;
 
-            g_gmGlobalModeMelee->m_playersInitData[0].unk1 = 0x80;
-            g_gmGlobalModeMelee->m_playersInitData[1].unk1 = 0x80;
+            g_GameGlobal->m_modeMelee->m_playersInitData[0].unk1 = 0x80;
+            g_GameGlobal->m_modeMelee->m_playersInitData[1].unk1 = 0x80;
 
-            g_gmGlobalModeMelee->m_playersInitData[0].unk2 = 0x0;
-            g_gmGlobalModeMelee->m_playersInitData[1].unk2 = 0x1;
+            g_GameGlobal->m_modeMelee->m_playersInitData[0].unk2 = 0x0;
+            g_GameGlobal->m_modeMelee->m_playersInitData[1].unk2 = 0x1;
 
             // melee[P1_CHAR_ID_IDX+1] = 0; // Set player type to human
             // melee[P2_CHAR_ID_IDX+1] = 0;
             // melee[STAGE_ID_IDX] = stageChoice;
-            melee[STAGE_ID_IDX] = 0x01; // TODO uncomment and use above line, just testing with battlefield
+            g_GameGlobal->m_modeMelee->m_meleeInitData.m_stageID = 0x01; // TODO uncomment and use above line, just testing with battlefield
         }
         
         OSEnableInterrupts();
@@ -757,8 +750,8 @@ namespace GMMelee {
 
 namespace Netplay {
     GameSettings gameSettings;
-    const u8 localPlayerIdxInvalid = 200;
-    u8 localPlayerIdx = localPlayerIdxInvalid;
+    const bu8 localPlayerIdxInvalid = 200;
+    bu8 localPlayerIdx = localPlayerIdxInvalid;
     bool isInMatch = false;
     bool IsInMatch() 
     { 
@@ -777,6 +770,14 @@ namespace Netplay {
     void FixGameSettingsEndianness(GameSettings& settings) 
     {
         utils::swapByteOrder(settings.stageID);
+        utils::swapByteOrder(settings.randomSeed);
+        for(int i = 0; i < MAX_NUM_PLAYERS; i++)
+        {
+            for(int f = 0; f < NAMETAG_SIZE; f++)
+            {
+                utils::swapByteOrder(settings.playerSettings[i].nametag[f]);
+            }
+        }
     }
 
     void StartMatching() 
@@ -802,11 +803,11 @@ namespace Netplay {
     
     bool CheckIsMatched() {
         bool matched = false;
-        u8 cmd_byte = EXICommand::CMD_UNKNOWN;
+        bu8 cmd_byte = EXICommand::CMD_UNKNOWN;
 
         // cmd byte + game settings
-        size_t read_size = sizeof(GameSettings) + 1;
-        u8* read_data = (u8*)MemExpHooks::mallocExp(read_size);
+        const size_t read_size = sizeof(GameSettings) + 1;
+        bu8 read_data[read_size];
 
         // stall until we get game settings from opponent, then load those in and continue to boot up the match
         //while (cmd_byte != EXICommand::CMD_SETUP_PLAYERS) {
@@ -815,9 +816,11 @@ namespace Netplay {
 
             if (cmd_byte == EXICommand::CMD_SETUP_PLAYERS) {
                 OSReport("SETUP PLAYERS GAMESIDE\n");
-                GameSettings gameSettingsFromOpponent = bufferToObject<GameSettings>(&read_data[1]);
-                OSReport("--SETUP CHARS--\nP1 char: %u  P2 char: %u\n--END SETUP CHARS--\n", (unsigned int)gameSettingsFromOpponent.playerSettings[0].charID, (unsigned int)gameSettingsFromOpponent.playerSettings[1].charID);
+                GameSettings gameSettingsFromOpponent;
+                OSReport("SIZE OF GAMESETTINGS OBJ: %d\n", sizeof(GameSettings));
+                utils::myMemmove(&gameSettingsFromOpponent, read_data + 1, sizeof(GameSettings));
                 FixGameSettingsEndianness(gameSettingsFromOpponent);
+                OSReport("--SETUP CHARS--\nP1 char: %d  P2 char: %d\n--END SETUP CHARS--\n", gameSettingsFromOpponent.playerSettings[0].charID, gameSettingsFromOpponent.playerSettings[1].charID);
                 MergeGameSettingsIntoGame(gameSettingsFromOpponent);
                 // TODO: we shoud assign the gameSettings var to the gameSettings from opponent since its merged with ours now.
                 gameSettings.localPlayerPort = gameSettingsFromOpponent.localPlayerPort;
@@ -827,7 +830,6 @@ namespace Netplay {
                 //OSReport("Reading for setupplayers, didn't get it...\n");
             }
         //}
-        MemExpHooks::freeExp(read_data);
         return matched;
     }
 
@@ -842,7 +844,6 @@ namespace Netplay {
 namespace RollbackHooks {
     void InstallHooks() 
     {
-        MemExpHooks::initializeMemory((void*) 0x93604000, 0x4000);
         // Match Namespace
         SyringeCore::syHookFunction(0x806d4c10, reinterpret_cast<void*>(Match::StopGameScMeleeHook));
         SyringeCore::syHookFunction(0x806d176c, reinterpret_cast<void*>(Match::StartSceneMelee));
@@ -855,7 +856,7 @@ namespace RollbackHooks {
         // FrameAdvance Namespace
         SyringeCore::syHookFunction(0x8004aa2c, reinterpret_cast<void*>(FrameAdvance::updateIpSwitchPreProcess));
         SyringeCore::syHookFunction(0x80029468, reinterpret_cast<void*>(FrameAdvance::updateLowHook));
-        SyringeCore::syHookFunction(0x800173a0, reinterpret_cast<void*>(FrameAdvance::handleFrameAdvanceHook));
+        SyringeCore::sySimpleHook(0x800173a4, reinterpret_cast<void*>(FrameAdvance::handleFrameAdvanceHook));
 
         // FrameLogic Namespace
         //SyringeCore::syHookFunction(0x8002dc74, reinterpret_cast<void*>(FrameLogic::gfTaskProcessHook));

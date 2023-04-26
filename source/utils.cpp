@@ -1,4 +1,6 @@
 #include "utils.h"
+#include "BrawlbackTypes.h"
+#include "mem_exp_hooks.h"
 namespace utils {
     u32 EncodeBranch(u32 start, u32 dest, bool linked)
     {
@@ -17,6 +19,31 @@ namespace utils {
     u32 EncodeBranch(u32 start, u32 dest)
     {
         return EncodeBranch(start, dest, false);
+    }
+    void* myMemmove(void* dest, const void* src, bu32 n)
+    {
+        char *pDest = (char *)dest;
+        const char *pSrc =( const char*)src;
+        //allocate memory for tmp array
+        char *tmp  = (char *)MemExpHooks::mallocExp(sizeof(char ) * n);
+        if(tmp == NULL)
+        {
+            return NULL;
+        }
+        else
+        {
+            unsigned int i = 0;
+            for(i =0; i < n ; ++i)
+            {
+                *(tmp + i) = *(pSrc + i);
+            }
+            for(i =0 ; i < n ; ++i)
+            {
+                *(pDest + i) = *(tmp + i);
+            }
+            MemExpHooks::freeExp(tmp);
+        }
+        return dest;
     }
     asm void SaveRegs()
     {
@@ -70,23 +97,23 @@ namespace utils {
         nop
     }
 
-    Vector<u8> uint16ToVector(u16 num)
+    Vector<bu8> uint16ToVector(bu16 num)
     {
-        u8 byte0 = num >> 8;
-        u8 byte1 = num & 0xFF;
-        Vector<u8> vec;
+        bu8 byte0 = num >> 8;
+        bu8 byte1 = num & 0xFF;
+        Vector<bu8> vec;
         vec.push(byte0);
         vec.push(byte1);
         return vec;
     }
 
-    Vector<u8> uint32ToVector(u32 num)
+    Vector<bu8> uint32ToVector(bu32 num)
     {
-        u8 byte0 = num >> 24;
-        u8 byte1 = (num & 0xFF0000) >> 16;
-        u8 byte2 = (num & 0xFF00) >> 8;
-        u8 byte3 = num & 0xFF;
-        Vector<u8> vec;
+        bu8 byte0 = num >> 24;
+        bu8 byte1 = (num & 0xFF0000) >> 16;
+        bu8 byte2 = (num & 0xFF00) >> 8;
+        bu8 byte3 = num & 0xFF;
+        Vector<bu8> vec;
         vec.push(byte0);
         vec.push(byte1);
         vec.push(byte2);
@@ -98,22 +125,22 @@ namespace utils {
         "1000", "1001", "1010", "1011", "1100", "1101", "1110", "1111",
     };
 
-    void print_byte(u8 byte)
+    void print_byte(bu8 byte)
     {
         OSReport("%s%s", bit_rep[byte >> 4], bit_rep[byte & 0x0F]);
     }
-    void print_half(u16 half) {
-        u8 byte0 = half >> 8;
-        u8 byte1 = half & 0xFF;
+    void print_half(bu16 half) {
+        bu8 byte0 = half >> 8;
+        bu8 byte1 = half & 0xFF;
 
         print_byte(byte0);
         print_byte(byte1);
     }
-    void print_word(u32 word) {
-        u8 byte0 = word >> 24;
-        u8 byte1 = (word & 0xFF0000) >> 16;
-        u8 byte2 = (word & 0xFF00) >> 8;
-        u8 byte3 = word & 0xFF;
+    void print_word(bu32 word) {
+        bu8 byte0 = word >> 24;
+        bu8 byte1 = (word & 0xFF0000) >> 16;
+        bu8 byte2 = (word & 0xFF00) >> 8;
+        bu8 byte3 = word & 0xFF;
 
         print_byte(byte0);
         print_byte(byte1);
@@ -124,24 +151,24 @@ namespace utils {
 
 
     // https://mklimenko.github.io/english/2018/08/22/robust-endian-swap/
-    void swapByteOrder(u16& val)
+    void swapByteOrder(bu16& val)
     {
-        u16 us = val;
+        bu16 us = val;
         us = (us >> 8) |
             (us << 8);
         val = us;
     }
 
-    void swapByteOrder(u32& val)
+    void swapByteOrder(bu32& val)
     {
-        u32 ui = val;
+        bu32 ui = val;
         ui = ((ui << 8) & 0xFF00FF00) | ((ui >> 8) & 0xFF00FF);
         ui = (ui << 16) | (ui >> 16);
         val = ui;
     }
     void swapByteOrder(float& val)
     {
-        u32 ui = *((u32*)&val); // pretend it's a u32
+        bu32 ui = *((bu32*)&val); // pretend it's a bu32
         ui = ((ui << 8) & 0xFF00FF00) | ((ui >> 8) & 0xFF00FF);
         ui = (ui << 16) | (ui >> 16);
         val = *((float*)&ui); // back to float
@@ -160,7 +187,7 @@ namespace utils {
 
 
 
-    void AddValueToByteArray(u32 value, Vector<u8> &Array)
+    void AddValueToByteArray(bu32 value, Vector<bu8> &Array)
     {
         for (int i = 0; i < 4; i++) {
             Array.push((value >> (3 * 8)) & 0xFF);
@@ -168,7 +195,7 @@ namespace utils {
         }
     }
 
-    void AddValueToByteArray(u16 value, Vector<u8> &Array)
+    void AddValueToByteArray(bu16 value, Vector<bu8> &Array)
     {
         for (int i = 0; i < 2; i++) {
             Array.push((value >> 8) & 0xFF);
@@ -176,12 +203,12 @@ namespace utils {
         }
     }
 
-    void AddValueToByteArray(u8 value, Vector<u8> &Array)
+    void AddValueToByteArray(bu8 value, Vector<bu8> &Array)
     {
         Array.push(value);
     }
 
-    void AddValueToByteArray(int value, Vector<u8> &Array)
+    void AddValueToByteArray(int value, Vector<bu8> &Array)
     {
         for (int i = 0; i < 4; i++) {
             Array.push((value >> (3 * 8)) & 0xFF);
@@ -189,7 +216,7 @@ namespace utils {
         }
     }
 
-    void AddValueToByteArray(short value, Vector<u8> &Array)
+    void AddValueToByteArray(short value, Vector<bu8> &Array)
     {
         for (int i = 0; i < 2; i++) {
             Array.push((value >> 8) & 0xFF);
@@ -197,7 +224,7 @@ namespace utils {
         }
     }
 
-    void AddValueToByteArray(char value, Vector<u8> &Array)
+    void AddValueToByteArray(char value, Vector<bu8> &Array)
     {
         Array.push(value);
     }
