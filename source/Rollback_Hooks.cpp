@@ -91,7 +91,6 @@ namespace Util {
         OSReport("Buttons: ");
         OSReport("Buttons: 0x%x", pad.buttons);
         OSReport("holdButtons: 0x%x", pad.holdButtons);
-        OSReport(" LTrigger: %u    RTrigger %u\n", pad.LTrigger, pad.RTrigger);
         //OSReport(" ---------\n"); 
     }
 
@@ -106,7 +105,6 @@ namespace Util {
         OSReport("B1: 0x%x ", pad.buttons);
         OSReport("B2: 0x%x ", pad._buttons);
         OSReport("B3: 0x%x \n", pad.newPressedButtons);
-        OSReport(" LTrigger: %u    RTrigger %u\n", pad.LTrigger, pad.RTrigger);
         //OSReport(" ---------\n"); 
     }
 
@@ -151,22 +149,19 @@ namespace Util {
 
     BrawlbackPad GamePadToBrawlbackPad(const gfPadStatus& pad) {
         BrawlbackPad ret = BrawlbackPad();
-        ret._buttons = pad._buttons;
-        ret.buttons = pad.buttons;
+        ret._buttons = pad._buttons.bits;
+        ret.buttons = pad.buttons.bits;
         // *(ret.newPressedButtons-0x2) = (int)*(pad+0x14);
-        ret.holdButtons = pad.holdButtons;
-        ret.rapidFireButtons = pad.rapidFireButtons;
-        ret.releasedButtons = pad.releasedButtons;
-        ret.newPressedButtons = pad.newPressedButtons;
+        ret.holdButtons = pad.holdButtons.bits;
+        ret.rapidFireButtons = pad.rapidFireButtons.bits;
+        ret.releasedButtons = pad.releasedButtons.bits;
+        ret.newPressedButtons = pad.newPressedButtons.bits;
         ret.LAnalogue = pad.LAnalogue;
         ret.RAnalogue = pad.RAnalogue;
         ret.cStickX = pad.cStickX;
         ret.cStickY = pad.cStickY;
         ret.stickX = pad.stickX;
         ret.stickY = pad.stickY;
-        ret.LTrigger = pad.LTrigger;
-        ret.RTrigger = pad.RTrigger;
-
 
         // OSReport("BUTTONS======\n");
         // OSReport("Buttons: 0x%x\n", pad._buttons);
@@ -203,29 +198,27 @@ namespace Util {
         // TODO: do this once on match start or whatever, so we don't need to access this so often and lose cpu cycles
         //bool isNotConnected = Netplay::getGameSettings().playerSettings[port].playerType == PlayerType::PLAYERTYPE_NONE;
         // get current char selection and if none, the set as not connected
-        bu8 charId = g_GameGlobal->m_modeMelee->m_playersInitData->m_slotID;
+        bu8 charId = g_GameGlobal->m_modeMelee->m_playersInitData[port].m_slotID;
         // bu8 charId = GM_GLOBAL_MODE_MELEE->playerData[port].charId;
         bool isNotConnected = charId == -1;
         // GM_GLOBAL_MODE_MELEE->playerData[port].playerType = isNotConnected ? 03 : 0 ; // Set to Human
         
 
         gamePad.isNotConnected = isNotConnected;
-        gamePad._buttons = pad._buttons;
-        gamePad.buttons = pad.buttons;
+        gamePad._buttons.bits = pad._buttons;
+        gamePad.buttons.bits = pad.buttons;
         // int* addr  = (int*) &gamePad;
         // *(addr+0x14+0x2) = pad.buttons;
-        gamePad.holdButtons = pad.holdButtons;
-        gamePad.rapidFireButtons = pad.rapidFireButtons;
-        gamePad.releasedButtons = pad.releasedButtons;
-        gamePad.newPressedButtons = pad.newPressedButtons;
+        gamePad.holdButtons.bits = pad.holdButtons;
+        gamePad.rapidFireButtons.bits = pad.rapidFireButtons;
+        gamePad.releasedButtons.bits = pad.releasedButtons;
+        gamePad.newPressedButtons.bits = pad.newPressedButtons;
         gamePad.LAnalogue = pad.LAnalogue;
         gamePad.RAnalogue = pad.RAnalogue;
         gamePad.cStickX = pad.cStickX;
         gamePad.cStickY = pad.cStickY;
         gamePad.stickX = pad.stickX;
         gamePad.stickY = pad.stickY;
-        gamePad.LTrigger = pad.LTrigger;
-        gamePad.RTrigger = pad.RTrigger;
         // OSReport("Port 0x%x Inputs\n", port);
         // OSReport("Buttons: 0x%x\n", pad.buttons);
         // OSReport("Buttons: 0x%x\n", pad.newPressedButtons);
@@ -339,7 +332,7 @@ namespace Match {
             SavestateMemRegionInfo memRegion;
             memRegion.address = addr_start; // might be bad cast... 64 bit ptr to 32 bit int
             memRegion.size = mem_size;
-            utils::myMemmove(memRegion.nameBuffer, heap_name, strlen(heap_name));
+            memmove(memRegion.nameBuffer, heap_name, strlen(heap_name));
             memRegion.nameBuffer[strlen(heap_name)] = '\0';
             memRegion.nameSize = strlen(heap_name);
             EXIPacket::CreateAndSend(EXICommand::CMD_SEND_DUMPALL, &memRegion, sizeof(SavestateMemRegionInfo));
@@ -352,7 +345,7 @@ namespace Match {
             SavestateMemRegionInfo memRegion;
             memRegion.address = reinterpret_cast<bu32>(allocated_addr); // might be bad cast... 64 bit ptr to 32 bit int
             memRegion.size = size;
-            utils::myMemmove(memRegion.nameBuffer, heap_name, strlen(heap_name));
+            memmove(memRegion.nameBuffer, heap_name, strlen(heap_name));
             memRegion.nameBuffer[strlen(heap_name)] = '\0';
             memRegion.nameSize = strlen(heap_name);
             EXIPacket::CreateAndSend(EXICommand::CMD_SEND_ALLOCS, &memRegion, sizeof(memRegion));
@@ -363,7 +356,7 @@ namespace Match {
         if (shouldTrackAllocs && strstr(relevantHeaps, heap_name) != NULL && !isRollback) {
             //OSReport("FREE: addr = 0x%08x\n", address);
             SavestateMemRegionInfo memRegion;
-            utils::myMemmove(memRegion.nameBuffer, heap_name, strlen(heap_name));
+            memmove(memRegion.nameBuffer, heap_name, strlen(heap_name));
             memRegion.nameBuffer[strlen(heap_name)] = '\0';
             memRegion.nameSize = strlen(heap_name);
             memRegion.address = reinterpret_cast<bu32>(address);
@@ -390,7 +383,7 @@ namespace Match {
     void AllocGfMemoryPoolBeginHook(char** internal_heap_data, bu32 size, bu32 alignment)
     {
         char* heap_name = *internal_heap_data;
-        utils::myMemmove(allocHeapName, heap_name, strlen(heap_name));
+        memmove(allocHeapName, heap_name, strlen(heap_name));
         allocHeapName[strlen(heap_name)] = '\0';
         allocSizeTracker = size;
     }
@@ -467,14 +460,14 @@ namespace FrameAdvance {
     {
         bu32 gameLogicFrame = getCurrentFrame();
         //OSReport("ProcessGameSimulationFrame %u \n", gameLogicFrame);
-
+        
         // save state on each simulated frame (this includes resim frames)
         if(shouldTrackAllocs)
         {
             Util::SaveState(gameLogicFrame);
-        }
 
-        GetInputsForFrame(gameLogicFrame, inputs);
+            GetInputsForFrame(gameLogicFrame, inputs);
+        }
 
         //OSReport("Using inputs %u %u  game frame: %u\n", inputs->playerFrameDatas[0].frame, inputs->playerFrameDatas[1].frame, gameLogicFrame);
         
@@ -489,46 +482,57 @@ namespace FrameAdvance {
         }
         utils::RestoreRegs();
     }
-
-    void updateLowHook() 
+    void getGamePadStatusHook() 
     {
         utils::SaveRegs();
-        gfPadSystem* padSystem;
-        bu32 padStatus;
-        asm volatile(
-            "mr %0, r25\n\t"
-            "mr %1, r26\n\t"
-            : "=r"(padSystem), "=r"(padStatus)
+        gfPadSystem* pad_system; 
+        int port;
+        gfPadStatus* ddst;
+        asm volatile (
+            "mr %0, r3\n\t"
+            "mr %1, r4\n\t"
+            "mr %2, r5\n\t" :
+            "=r"(pad_system), "=r"(port), "=r"(ddst)
         );
-        getGamePadStatusInjection(padSystem, padStatus);
+        getGamePadStatusInjection(pad_system, port, ddst, true);
         utils::RestoreRegs();
         asm volatile {
-            lwz	r0, 0x0014 (sp)
-            mtlr r0
-            addi sp, sp, 16
-            lwz	r4, -0x4390 (r13)
-            lis r12, 0x8002
-            ori r12, r12, 0x946C
-            mtctr r12
-            bctr
+            lis r3, 1
         }
     }
-    void getGamePadStatusInjection(gfPadSystem* padSystem, bu32 padStatus) 
+    void getSysPadStatusHook()
     {
+        utils::SaveRegs();
+        gfPadSystem* pad_system; 
+        int port;
+        gfPadStatus* ddst;
+        asm volatile (
+            "mr %0, r3\n\t"
+            "mr %1, r4\n\t"
+            "mr %2, r5\n\t" :
+            "=r"(pad_system), "=r"(port), "=r"(ddst)
+        );
+        getGamePadStatusInjection(pad_system, port, ddst, false);
+        utils::RestoreRegs();
+        asm volatile {
+            lis r3, 1
+        }
+    }
+    void getGamePadStatusInjection(gfPadSystem* pad_system, int port, gfPadStatus* ddst, bool isGamePad) {
         // OSReport("PAD %i 0x%x\n", 0, &PAD_SYSTEM->sysPads[0]);
         // OSReport("PAD %i 0x%x\n", 1, &PAD_SYSTEM->sysPads[1]);
         // OSReport("PAD %i 0x%x\n", 2, &PAD_SYSTEM->sysPads[2]);
         // OSReport("PAD %i 0x%x\n", 3, &PAD_SYSTEM->sysPads[3]);
         //Util::printGameInputs(PAD_SYSTEM->sysPads[0]);
-        //  if((ddst->releasedButtons + ddst->newPressedButtons) != 0){
+        //  if((ddst->releasedButtons.bits + ddst->newPressedButtons.bits) != 0){
         //         OSReport("LOCAL BUTTONS(P%i)===GP(%i)===\n", port, isGamePad);
-        //         OSReport("releasedButtons 0x%x\n", ddst->releasedButtons);
-        //         OSReport("newPressedButtons 0x%x\n", ddst->newPressedButtons);
+        //         OSReport("releasedButtons 0x%x\n", ddst->releasedButtons.bits);
+        //         OSReport("newPressedButtons 0x%x\n", ddst->newPressedButtons.bits);
         // }
 
-        // if((ddst->buttons) != 0){
+        // if((ddst->buttons.bits) != 0){
         //     // OSReport("LOCAL BUTTONS(P%i)===GP(%i)===\n", port, isGamePad);
-        //     // OSReport("buttons 0x%x\n", ddst->buttons);
+        //     // OSReport("buttons 0x%x\n", ddst->buttons.bits);
         //     OSReport("Melee Info=====\n");
         //     OSReport("p1 charId=0x%x ptype=0x%x unk1=0x%x unk2=0x%x\n", GM_GLOBAL_MODE_MELEE->playerData[0].charId, GM_GLOBAL_MODE_MELEE->playerData[0].playerType, GM_GLOBAL_MODE_MELEE->playerData[0].unk1, GM_GLOBAL_MODE_MELEE->playerData[0].unk2);
         //     OSReport("p2 charId=0x%x ptype=0x%x unk1=0x%x unk2=0x%x\n", GM_GLOBAL_MODE_MELEE->playerData[1].charId, GM_GLOBAL_MODE_MELEE->playerData[1].playerType, GM_GLOBAL_MODE_MELEE->playerData[1].unk1, GM_GLOBAL_MODE_MELEE->playerData[1].unk2);
@@ -536,31 +540,26 @@ namespace FrameAdvance {
         //     OSReport("p4 charId=0x%x ptype=0x%x unk1=0x%x unk2=0x%x\n", GM_GLOBAL_MODE_MELEE->playerData[3].charId, GM_GLOBAL_MODE_MELEE->playerData[3].playerType, GM_GLOBAL_MODE_MELEE->playerData[3].unk1, GM_GLOBAL_MODE_MELEE->playerData[3].unk2);
 
         // }
+
         if (Netplay::IsInMatch()) {
             //OSReport("Injecting pad for- frame %u port %i\n", currentFrameData.playerFrameDatas[port].frame, port);
-            
-            FrameLogic::FrameDataLogic(getCurrentFrame());
-            for(int i  = 0; i < MAX_NUM_PLAYERS; i++)
-            {
-                gfPadStatus* gamePad = reinterpret_cast<gfPadStatus*>(padStatus + 0x40 * i);
-                PlayerFrameData frameData = currentFrameData.playerFrameDatas[i];
-                BrawlbackPad pad = frameData.pad;
-                Util::InjectBrawlbackPadToPadStatus(*gamePad, pad, i);
-                // if(ddst->newPressedButtons == 0x1000){
-                //     bp();
-                // }
+            PlayerFrameData frameData = currentFrameData.playerFrameDatas[port];
+            BrawlbackPad pad = isGamePad ? frameData.pad : frameData.sysPad;
+            Util::InjectBrawlbackPadToPadStatus(*ddst, pad, port);
+            // if(ddst->newPressedButtons.bits == 0x1000){
+            //     bp();
+            // }
 
-                // TODO: make whole game struct be filled in from dolphin based off a known good match between two characters on a stage like battlefield
-                if((gamePad->releasedButtons + gamePad->newPressedButtons) != 0){
-                    //OSReport("BUTTONS(P%i)===GP(%i)===\n", i, true);
-                    //OSReport("releasedButtons 0x%x\n", gamePad->releasedButtons);
-                    //OSReport("newPressedButtons 0x%x\n", gamePad->newPressedButtons);
-                }
-            }
+            // TODO: make whole game struct be filled in from dolphin based off a known good match between two characters on a stage like battlefield
+            /*if((ddst->releasedButtons.bits + ddst->newPressedButtons.bits) != 0){
+                OSReport("BUTTONS(P%i)===GP(%i)===\n", port, isGamePad);
+                OSReport("releasedButtons 0x%x\n", ddst->releasedButtons.bits);
+                OSReport("newPressedButtons 0x%x\n", ddst->newPressedButtons.bits);
+            }*/
 
-            // if((ddst->buttons) != 0){
+            // if((ddst->buttons.bits) != 0){
                 // OSReport("BUTTONS(P%i)===GP(%i)===\n", port, isGamePad);
-                // OSReport("buttons 0x%x\n", ddst->buttons);
+                // OSReport("buttons 0x%x\n", ddst->buttons.bits);
             // }
 
         }
@@ -573,15 +572,6 @@ namespace FrameAdvance {
             : "r" (framesToAdvance)
         );
         utils::RestoreRegs();
-        asm volatile {
-            lwz	r0, 0x0014 (sp)
-            mtlr r0
-            addi sp, sp, 16
-            lis r12, 0x8001
-            ori r12, r12, 0x73a8
-            mtctr r12
-            bctr
-        }
     }
     void setFrameAdvanceFromEmu() {
         EXIPacket::CreateAndSend(EXICommand::CMD_FRAMEADVANCE);
@@ -649,9 +639,7 @@ namespace FrameLogic {
     {
         utils::SaveRegs();
         bu32 currentFrame = getCurrentFrame();
-
         //Util::printGameInputs(PAD_SYSTEM->pads[0]);
-
         //Util::printGameInputs(PAD_SYSTEM->sysPads[0]);
 
         // this is the start of all our logic for each frame. Because EXI writes/reads are synchronous,
@@ -665,8 +653,9 @@ namespace FrameLogic {
             // lol
             g_mtRandDefault->seed = 0x496ffd00;
             g_mtRandOther->seed = 0x496ffd00;
-
+            OSReport("~~~~~~~~~~~~~~~~ FRAME %d ~~~~~~~~~~~~~~~~\n", currentFrame);
             #ifdef NETPLAY_IMPL
+                FrameDataLogic(currentFrame);
                 if(!shouldTrackAllocs)
                 {
                     gfHeapManager::dumpAll();
@@ -748,7 +737,7 @@ namespace GMMelee {
         if (isMatchChoicesPopulated) {
             OSReport("postSetupMelee stage: 0x%x p1: 0x%x p2: 0x%x\n", stageChoice, charChoices[0], charChoices[1]);
 
-            utils::myMemmove(g_GameGlobal->m_modeMelee, defaultGmGlobalModeMelee, 0x320);
+            memmove(g_GameGlobal->m_modeMelee, defaultGmGlobalModeMelee, 0x320);
         
             g_GameGlobal->m_modeMelee->m_playersInitData[0].m_slotID = charChoices[0];
             g_GameGlobal->m_modeMelee->m_playersInitData[1].m_slotID = charChoices[1];
@@ -767,7 +756,6 @@ namespace GMMelee {
             // melee[STAGE_ID_IDX] = stageChoice;
             g_GameGlobal->m_modeMelee->m_meleeInitData.m_stageID = 0x01; // TODO uncomment and use above line, just testing with battlefield
         }
-        
         OSEnableInterrupts();
         utils::RestoreRegs();
     }
@@ -840,7 +828,7 @@ namespace Netplay {
 
             if (cmd_byte == EXICommand::CMD_SETUP_PLAYERS) {
                 GameSettings gameSettingsFromOpponent;
-                utils::myMemmove(&gameSettingsFromOpponent, read_data + 1, sizeof(GameSettings));
+                memmove(&gameSettingsFromOpponent, read_data + 1, sizeof(GameSettings));
                 FixGameSettingsEndianness(gameSettingsFromOpponent);
                 MergeGameSettingsIntoGame(gameSettingsFromOpponent);
                 // TODO: we shoud assign the gameSettings var to the gameSettings from opponent since its merged with ours now.
@@ -877,8 +865,9 @@ namespace RollbackHooks {
 
         // FrameAdvance Namespace
         SyringeCore::syHookFunction(0x8004aa2c, reinterpret_cast<void*>(FrameAdvance::updateIpSwitchPreProcess));
-        SyringeCore::sySimpleHook(0x80029468, reinterpret_cast<void*>(FrameAdvance::updateLowHook));
-        SyringeCore::sySimpleHook(0x800173a4, reinterpret_cast<void*>(FrameAdvance::handleFrameAdvanceHook));
+        SyringeCore::syHookFunction(0x8002b038, reinterpret_cast<void*>(FrameAdvance::getSysPadStatusHook));
+        SyringeCore::syHookFunction(0x8002ae40, reinterpret_cast<void*>(FrameAdvance::getGamePadStatusHook));
+        SyringeCore::syHookFunction(0x800173a4, reinterpret_cast<void*>(FrameAdvance::handleFrameAdvanceHook));
 
         // FrameLogic Namespace
         //SyringeCore::syHookFunction(0x8002dc74, reinterpret_cast<void*>(FrameLogic::gfTaskProcessHook));

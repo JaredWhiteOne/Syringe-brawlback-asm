@@ -6,7 +6,7 @@ namespace EXIHooks {
     void writeEXI(void* data, u32 size, EXIChannel channel, u32 device, EXIFreq frequency) {
         //need to make new buffer to ensure data is aligned to cache block
         void* alignedData = MEMAllocFromExpHeapEx(MemExpHooks::mainHeap, size, 32);
-        utils::myMemmove(alignedData, data, size);
+        memmove(alignedData, data, size);
         DCFlushRange(alignedData, size);
         setupEXIDevice(channel, device, frequency);
         EXIDma(channel, alignedData, size, 1, NULL);
@@ -25,7 +25,7 @@ namespace EXIHooks {
         removeEXIDevice(channel);
         DCFlushRange(alignedDestination, size);
 
-        utils::myMemmove(destination, alignedDestination, size);
+        memmove(destination, alignedDestination, size);
 
         MemExpHooks::freeExp(alignedDestination);
     }

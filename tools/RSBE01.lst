@@ -16,7 +16,6 @@
 901812a0: g_GameFrame
 805bacc0: g_PadSystem
 90ff50c0: g_scMelee
-90180f20: g_gmGlobalModeMelee
 
 // System
 803f1254:__save_fpr
