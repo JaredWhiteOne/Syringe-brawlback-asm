@@ -264,12 +264,12 @@ GameSettings& GameSettings::operator=(const GameSettings &D ) {
 }
 
 gfPadStatus::gfPadStatus() {
-    _buttons.bits = 0;
-    buttons.bits = 0;
-    holdButtons.bits = 0;
-    rapidFireButtons.bits = 0;
-    releasedButtons.bits = 0;
-    newPressedButtons.bits = 0;
+    _buttons = 0;
+    buttons = 0;
+    holdButtons = 0;
+    rapidFireButtons = 0;
+    releasedButtons = 0;
+    newPressedButtons = 0;
     stickX = 0;
     stickY = 0;
     cStickX = 0;
@@ -280,12 +280,12 @@ gfPadStatus::gfPadStatus() {
     type = controllerType::GAMECUBE;
 }
 gfPadStatus::gfPadStatus(const gfPadStatus& D) {
-    _buttons.bits = D._buttons.bits;
-    buttons.bits = D.buttons.bits;
-    holdButtons.bits = D.holdButtons.bits;
-    rapidFireButtons.bits = D.rapidFireButtons.bits;
-    releasedButtons.bits = D.releasedButtons.bits;
-    newPressedButtons.bits = D.newPressedButtons.bits;
+    _buttons = D._buttons;
+    buttons = D.buttons;
+    holdButtons = D.holdButtons;
+    rapidFireButtons = D.rapidFireButtons;
+    releasedButtons = D.releasedButtons;
+    newPressedButtons = D.newPressedButtons;
     stickX = D.stickX;
     stickY = D.stickY;
     cStickX = D.cStickX;
@@ -297,12 +297,12 @@ gfPadStatus::gfPadStatus(const gfPadStatus& D) {
 }
 gfPadStatus& gfPadStatus::operator=(const gfPadStatus &D ) {
     if( this != &D ) {
-        _buttons.bits = D._buttons.bits;
-        buttons.bits = D.buttons.bits;
-        holdButtons.bits = D.holdButtons.bits;
-        rapidFireButtons.bits = D.rapidFireButtons.bits;
-        releasedButtons.bits = D.releasedButtons.bits;
-        newPressedButtons.bits = D.newPressedButtons.bits;
+        _buttons = D._buttons;
+        buttons = D.buttons;
+        holdButtons = D.holdButtons;
+        rapidFireButtons = D.rapidFireButtons;
+        releasedButtons = D.releasedButtons;
+        newPressedButtons = D.newPressedButtons;
         stickX = D.stickX;
         stickY = D.stickY;
         cStickX = D.cStickX;

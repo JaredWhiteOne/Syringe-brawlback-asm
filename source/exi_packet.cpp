@@ -95,7 +95,7 @@ void EXIPacket::CreateAndSend(u8 EXICmd, void* source, u32 size) {
 
     // copy EXICmd byte into packet
     memmove(new_packet, &EXICmd, sizeof(EXICmd));
-    if (source != NULL) {
+    if (source != (u8*)0x0) {
         // copy actual packet into our buffer
         memmove(new_packet + sizeof(EXICmd), source, size);
     }

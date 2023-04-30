@@ -63,11 +63,10 @@ namespace FrameAdvance {
     void GetInputsForFrame(bu32 frame, FrameData* inputs);
     void ProcessGameSimulationFrame(FrameData* inputs);
     void setFrameAdvanceFromEmu();
-    void getGamePadStatusInjection(gfPadSystem* pad_system, int port, gfPadStatus* ddst, bool isGamePad);
+    void getGamePadStatusInjection(gfPadSystem* padSystem, bu32 padStatus);
 
     // Hooks
-    void getGamePadStatusHook();
-    void getSysPadStatusHook();
+    void updateLowHook();
     void handleFrameAdvanceHook();
     void updateIpSwitchPreProcess();
 }

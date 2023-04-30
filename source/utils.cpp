@@ -26,13 +26,13 @@ namespace utils {
         const char *pSrc =( const char*)src;
         if(MemExpHooks::getFreeSize() < n)
         {
-            return NULL;
+            return (char*)0x0;
         }
         //allocate memory for tmp array
         char *tmp  = (char *)MemExpHooks::mallocExp(sizeof(char ) * n);
         if(tmp == NULL)
         {
-            return NULL;
+            return (char*)0x0;
         }
         else
         {

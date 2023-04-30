@@ -53,7 +53,7 @@ public:
     EXIPacket();
     ~EXIPacket();
     bool Send();
-    static void CreateAndSend(u8 EXICmd, void* source = NULL, u32 size = 0);
+    static void CreateAndSend(u8 EXICmd, void* source = (u8*)0x0, u32 size = 0);
     u8 getCmd();
 private:
     u8* source;

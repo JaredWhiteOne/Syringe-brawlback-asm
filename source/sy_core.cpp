@@ -124,5 +124,4 @@ namespace SyringeCore {
     {
         return syReplaceFunction((u32)symbol, replacement, original, moduleId);
     }
-
 } // namespace SyringeCore
