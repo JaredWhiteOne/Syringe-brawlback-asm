@@ -30,7 +30,7 @@ bool gameHasStarted() {
 }
 
 void fillOutGameSettings(GameSettings& settings) {
-    settings.randomSeed = g_mtRandDefault->seed;
+    settings.randomSeed = g_mtRandDefault.seed;
     settings.stageID = g_GameGlobal->m_modeMelee->m_meleeInitData.m_stageID;
 
     bu8 p1_id = g_GameGlobal->m_modeMelee->m_playersInitData[0].m_slotID;
@@ -62,8 +62,8 @@ void fillOutGameSettings(GameSettings& settings) {
 // take gamesettings and apply it to our game
 void MergeGameSettingsIntoGame(GameSettings& settings) {
     //DEFAULT_MT_RAND->seed = settings->randomSeed;
-    g_mtRandDefault->seed = 0x496ffd00; // hardcoded for testing (arbitrary number)
-    g_mtRandOther->seed = 0x496ffd00;
+    g_mtRandDefault.seed = 0x496ffd00; // hardcoded for testing (arbitrary number)
+    g_mtRandOther.seed = 0x496ffd00;
 
     //GM_GLOBAL_MODE_MELEE->stageID = settings->stageID;
     //GM_GLOBAL_MODE_MELEE->stageID = 2;
@@ -190,15 +190,15 @@ namespace Util {
             pfd.syncData.stocks = (bu8)ftowner->getStockCount();
         }
         
-        pfd.pad = Util::GamePadToBrawlbackPad(g_PadSystem->gcPads[port]);
-        pfd.sysPad = Util::GamePadToBrawlbackPad(g_PadSystem->gcSysPads[port]);
+        pfd.pad = Util::GamePadToBrawlbackPad(g_PadSystem.gcPads[port]);
+        pfd.sysPad = Util::GamePadToBrawlbackPad(g_PadSystem.gcSysPads[port]);
     }
     void InjectBrawlbackPadToPadStatus(gfPadStatus& gamePad, const BrawlbackPad& pad, int port) {
         
         // TODO: do this once on match start or whatever, so we don't need to access this so often and lose cpu cycles
         //bool isNotConnected = Netplay::getGameSettings().playerSettings[port].playerType == PlayerType::PLAYERTYPE_NONE;
         // get current char selection and if none, the set as not connected
-        bu8 charId = g_globalMelee->m_playersInitData[port].m_slotID;
+        bu8 charId = g_globalMelee.m_playersInitData[port].m_slotID;
         // bu8 charId = GM_GLOBAL_MODE_MELEE->playerData[port].charId;
         bool isNotConnected = charId == -1;
         // GM_GLOBAL_MODE_MELEE->playerData[port].playerType = isNotConnected ? 03 : 0 ; // Set to Human
@@ -272,8 +272,8 @@ namespace Match {
         #ifdef NETPLAY_IMPL
         //Netplay::StartMatching(); // now moved to m_modeMelee.cpp
         Netplay::SetIsInMatch(true);
-        g_mtRandDefault->seed = 0x496ffd00;
-        g_mtRandOther->seed = 0x496ffd00;
+        g_mtRandDefault.seed = 0x496ffd00;
+        g_mtRandOther.seed = 0x496ffd00;
         #else
         // 'debug' values
         Netplay::getGameSettings().localPlayerIdx = 0;
@@ -301,8 +301,8 @@ namespace Match {
         utils::SaveRegs();
         if(Netplay::IsInMatch())
         {
-            g_mtRandDefault->seed = 0x496ffd00;
-            g_mtRandOther->seed = 0x496ffd00;
+            g_mtRandDefault.seed = 0x496ffd00;
+            g_mtRandOther.seed = 0x496ffd00;
         }
         utils::RestoreRegs();
     }
@@ -644,8 +644,8 @@ namespace FrameLogic {
             // just resimulated/stalled/skipped/whatever, reset to normal
             FrameAdvance::ResetFrameAdvance();
             // lol
-            g_mtRandDefault->seed = 0x496ffd00;
-            g_mtRandOther->seed = 0x496ffd00;
+            g_mtRandDefault.seed = 0x496ffd00;
+            g_mtRandOther.seed = 0x496ffd00;
             OSReport("~~~~~~~~~~~~~~~~ FRAME %d ~~~~~~~~~~~~~~~~\n", currentFrame);
             #ifdef NETPLAY_IMPL
                 FrameDataLogic(currentFrame);
